@@ -1,3 +1,6 @@
 .DS_Store
 .sites-runtime/
 *.tar.gz
+build/
+.build/
+.swiftpm/
