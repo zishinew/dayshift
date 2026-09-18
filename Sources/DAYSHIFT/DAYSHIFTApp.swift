@@ -8,9 +8,9 @@ struct DAYSHIFTApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
-                .frame(minWidth: 620, minHeight: 560)
+                .frame(minWidth: 700, minHeight: 580)
         }
-        .defaultSize(width: 780, height: 680)
+        .defaultSize(width: 900, height: 700)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) { }
