@@ -24,6 +24,20 @@ final class TaskCommandInterpreterTests: XCTestCase {
         XCTAssertEqual(TaskCommandInterpreter().interpret("remove quiz", now: now), .delete("quiz"))
     }
 
+    func testNaturalEnglishDeleteWithDateTail() {
+        XCTAssertEqual(
+            TaskCommandInterpreter().interpret("remove the quiz on next Tuesday", now: now),
+            .delete("quiz")
+        )
+    }
+
+    func testNaturalEnglishCompletion() {
+        XCTAssertEqual(
+            TaskCommandInterpreter().interpret("mark the quiz as complete", now: now),
+            .complete("quiz")
+        )
+    }
+
     func testRenameCommand() {
         XCTAssertEqual(
             TaskCommandInterpreter().interpret("rename quiz to chemistry quiz", now: now),

@@ -66,46 +66,50 @@ struct TaskCommandInterpreter {
 
         if let groups = captures(#"^(?:set\s+)?(?:the\s+)?priority\s+(?:of|for)\s+(.+?)\s+(?:to\s+)?(high|medium|low)$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
-            return .setPriority(query: groups[0], priority: priority)
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
         if let groups = captures(#"^(?:set\s+)?(.+?)\s+priority\s+(?:to\s+)?(high|medium|low)$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
-            return .setPriority(query: groups[0], priority: priority)
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
         if let groups = captures(#"^priority\s+(.+?)\s+(?:to\s+)?(high|medium|low)$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
-            return .setPriority(query: groups[0], priority: priority)
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
-        if let groups = captures(#"^make\s+(.+?)\s+(high|medium|low)(?:\s+priority)?$"#, in: value),
+        if let groups = captures(#"^make\s+(.+?)\s+(?:a\s+)?(high|medium|low)(?:\s+priority)?$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
-            return .setPriority(query: groups[0], priority: priority)
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
         if let groups = captures(#"^(?:rename|change\s+name\s+of)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
-            return .rename(query: groups[0], title: groups[1])
+            return .rename(query: cleanTarget(groups[0]), title: groups[1])
         }
 
         if let groups = captures(#"^(?:move|reschedule)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
-            return .reschedule(query: groups[0], date: taskParser.parse(groups[1], now: now).dueDate)
+            return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
         if let groups = captures(#"^(?:complete|finish)\s+(?:task\s+)?(.+)$"#, in: value) {
-            return .complete(groups[0])
+            return .complete(cleanTarget(groups[0]))
         }
 
         if let groups = captures(#"^mark\s+(.+?)\s+(?:done|complete|completed)$"#, in: value) {
-            return .complete(groups[0])
+            return .complete(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^mark\s+(.+?)\s+as\s+(?:done|complete|completed)$"#, in: value) {
+            return .complete(cleanTarget(groups[0]))
         }
 
         if let groups = captures(#"^(?:reopen|uncomplete|undo)\s+(?:task\s+)?(.+)$"#, in: value) {
-            return .reopen(groups[0])
+            return .reopen(cleanTarget(groups[0]))
         }
 
         if let groups = captures(#"^(?:delete|remove|cancel)\s+(?:task\s+)?(.+)$"#, in: value) {
-            return .delete(groups[0])
+            return .delete(cleanTarget(groups[0]))
         }
 
         if let groups = captures(#"^(?:show|go\s+to|open)\s+(.+)$"#, in: value) {
@@ -118,6 +122,20 @@ struct TaskCommandInterpreter {
             options: [.regularExpression, .caseInsensitive]
         )
         return .add(taskParser.parse(taskText, now: now))
+    }
+
+    private func cleanTarget(_ input: String) -> String {
+        var target = input
+        target = replacing(#"^\s*(?:the|a|an|my)\s+"#, in: target)
+        target = replacing(#"\s+(?:on|for|by)\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight|\d{1,2}/\d{1,2}(?:/\d{2,4})?).*$"#, in: target)
+        target = replacing(#"\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight)\b.*$"#, in: target)
+        target = replacing(#"\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$"#, in: target)
+        target = replacing(#"\s+as$"#, in: target)
+        return target.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func replacing(_ pattern: String, in value: String) -> String {
+        value.replacingOccurrences(of: pattern, with: "", options: [.regularExpression, .caseInsensitive])
     }
 
     private func captures(_ pattern: String, in value: String) -> [String]? {

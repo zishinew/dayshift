@@ -118,8 +118,8 @@ struct NaturalLanguageParser {
 
     private func cleanedTitle(from input: String) -> String {
         var title = input
-        title = replacing(#"^\s*i\s+(?:have|need|want|must|should)\s+(?:to\s+)?"#, in: title)
-        title = replacing(#"\b(?:today|tomorrow|tonight|next week|this\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|by\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|urgent|important|asap|critical|high priority|low priority|whenever|someday|sometime)\b"#, in: title)
+        title = replacing(#"^\s*(?:i\s+(?:have|need|want|must|should)\s+(?:to\s+)?|remind\s+me\s+to\s+|don't\s+forget\s+to\s+|remember\s+to\s+)"#, in: title)
+        title = replacing(#"\b(?:today|tomorrow|tonight|next week|this\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|on\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|by\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|urgent|important|asap|critical|high priority|low priority|whenever|someday|sometime)\b"#, in: title)
         title = replacing(#"\s+"#, with: " ", in: title).trimmingCharacters(in: .whitespacesAndNewlines)
         title = replacing(#"^(?:a|an|the)\s+"#, in: title)
 
