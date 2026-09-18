@@ -11,11 +11,12 @@ struct ContentView: View {
     @State private var input = ""
     @State private var selectedDate = Date()
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+    @State private var commandFeedback: String?
 
-    private let parser = NaturalLanguageParser()
+    private let commandInterpreter = TaskCommandInterpreter()
 
-    private var preview: ParsedTask? {
-        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : parser.parse(input)
+    private var interpretedCommand: TaskCommand? {
+        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : commandInterpreter.interpret(input)
     }
 
     private var displayDate: Date {
@@ -78,27 +79,32 @@ struct ContentView: View {
     private var capture: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
-                TextField("What needs doing?", text: $input)
+                TextField("Type a command…", text: $input)
                     .textFieldStyle(.plain)
                     .font(.system(size: 20, design: .serif))
-                    .onSubmit(addTask)
+                    .onSubmit(executeCommand)
+                    .onChange(of: input) { _, _ in commandFeedback = nil }
 
-                Button("Add", action: addTask)
-                    .font(.system(size: 15, weight: .semibold, design: .serif))
-                    .buttonStyle(.plain)
-                    .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Text("return ↵")
+                    .font(.system(size: 12, design: .serif))
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
             .frame(height: 54)
             .overlay(Rectangle().stroke(Color.black, lineWidth: 1))
 
-            if let preview {
-                Text("\(preview.title)  ·  \(preview.dueDate.formatted(date: .abbreviated, time: hasTime(preview.dueDate) ? .shortened : .omitted))  ·  \(preview.priority.rawValue)")
+            if let commandFeedback {
+                Text(commandFeedback)
+                    .font(.system(size: 13, design: .serif))
+                    .foregroundStyle(Color.black)
+                    .lineLimit(2)
+            } else if let interpretedCommand {
+                Text(interpretedCommand.preview)
                     .font(.system(size: 13, design: .serif))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
             } else {
-                Text("Try “quiz next Wednesday” or “call Mum tomorrow at 6pm”.")
+                Text("Add, complete, rename, move, reprioritize, delete, or navigate. Type “help” for examples.")
                     .font(.system(size: 13, design: .serif))
                     .foregroundStyle(.secondary)
             }
@@ -264,11 +270,61 @@ struct ContentView: View {
         }
     }
 
-    private func addTask() {
+    private func executeCommand() {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
-        store.add(parser.parse(value))
+        let command = commandInterpreter.interpret(value)
+
+        switch command {
+        case .add(let task):
+            store.add(task)
+            commandFeedback = "Added “\(task.title)”."
+        case .complete(let query):
+            commandFeedback = mutationFeedback(store.setCompletion(matching: query, to: true), verb: "Completed", query: query)
+        case .reopen(let query):
+            commandFeedback = mutationFeedback(store.setCompletion(matching: query, to: false), verb: "Reopened", query: query)
+        case .delete(let query):
+            commandFeedback = mutationFeedback(store.delete(matching: query), verb: "Deleted", query: query)
+        case .rename(let query, let title):
+            commandFeedback = store.rename(matching: query, to: title).map { "Renamed task to “\($0)”." } ?? notFound(query)
+        case .setPriority(let query, let priority):
+            commandFeedback = store.setPriority(matching: query, to: priority).map { "Set “\($0)” to \(priority.rawValue) priority." } ?? notFound(query)
+        case .reschedule(let query, let date):
+            commandFeedback = store.reschedule(matching: query, to: date).map { "Moved “\($0)” to \(date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted))." } ?? notFound(query)
+        case .clearCompleted:
+            let count = store.clearCompleted()
+            commandFeedback = count == 0 ? "No completed tasks to delete." : "Deleted \(count) completed \(count == 1 ? "task" : "tasks")."
+        case .showToday:
+            page = .today
+            commandFeedback = "Showing today."
+        case .showCalendar:
+            page = .calendar
+            commandFeedback = "Showing calendar."
+        case .showDate(let date):
+            page = .calendar
+            selectedDate = date
+            displayedMonth = Calendar.current.dateInterval(of: .month, for: date)?.start ?? date
+            commandFeedback = "Showing \(date.formatted(date: .long, time: .omitted))."
+        case .nextMonth:
+            page = .calendar
+            moveMonth(by: 1)
+            commandFeedback = "Showing next month."
+        case .previousMonth:
+            page = .calendar
+            moveMonth(by: -1)
+            commandFeedback = "Showing previous month."
+        case .help:
+            commandFeedback = "Try: “complete quiz” · “priority quiz high” · “move quiz to Friday” · “delete quiz” · “show October 4”."
+        }
         input = ""
+    }
+
+    private func mutationFeedback(_ title: String?, verb: String, query: String) -> String {
+        title.map { "\(verb) “\($0)”." } ?? notFound(query)
+    }
+
+    private func notFound(_ query: String) -> String {
+        "No task matches “\(query)”."
     }
 
     private func moveMonth(by amount: Int) {
@@ -290,20 +346,14 @@ struct ContentView: View {
 }
 
 private struct TaskRow: View {
-    @Environment(TaskStore.self) private var store
     let task: TaskItem
 
     var body: some View {
         HStack(spacing: 14) {
-            Button {
-                store.toggle(task)
-            } label: {
-                Image(systemName: task.isComplete ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18, weight: .regular))
-                    .foregroundStyle(Color.black)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
+            Image(systemName: task.isComplete ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 18, weight: .regular))
+                .foregroundStyle(Color.black)
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(task.title)
@@ -317,17 +367,6 @@ private struct TaskRow: View {
             }
 
             Spacer()
-
-            Button {
-                store.delete(task)
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .regular))
-                    .foregroundStyle(.secondary)
-                    .padding(6)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Delete \(task.title)")
         }
         .padding(.vertical, 15)
     }

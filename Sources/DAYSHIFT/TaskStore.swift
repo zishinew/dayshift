@@ -28,6 +28,58 @@ final class TaskStore {
         save()
     }
 
+    @discardableResult
+    func setCompletion(matching query: String, to value: Bool) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        tasks[index].isComplete = value
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
+    func delete(matching query: String) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        let title = tasks[index].title
+        tasks.remove(at: index)
+        save()
+        return title
+    }
+
+    @discardableResult
+    func rename(matching query: String, to title: String) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        tasks[index].title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let updated = tasks[index].title
+        save()
+        return updated
+    }
+
+    @discardableResult
+    func setPriority(matching query: String, to priority: TaskPriority) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        tasks[index].priority = priority
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
+    func reschedule(matching query: String, to date: Date) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        tasks[index].dueDate = date
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    func clearCompleted() -> Int {
+        let count = tasks.count(where: \.isComplete)
+        tasks.removeAll(where: \.isComplete)
+        save()
+        return count
+    }
+
     func delete(_ task: TaskItem) {
         tasks.removeAll { $0.id == task.id }
         save()
@@ -49,6 +101,22 @@ final class TaskStore {
         case .medium: 1
         case .low: 2
         }
+    }
+
+    private func matchingIndex(for query: String) -> Int? {
+        let needle = normalize(query)
+        guard !needle.isEmpty else { return nil }
+
+        if let exact = tasks.firstIndex(where: { normalize($0.title) == needle }) {
+            return exact
+        }
+        return tasks.firstIndex(where: { normalize($0.title).contains(needle) })
+    }
+
+    private func normalize(_ value: String) -> String {
+        value
+            .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
     }
 
     private func load() {

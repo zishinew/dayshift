@@ -5,7 +5,7 @@ project_dir="${0:A:h:h}"
 app_bundle="$project_dir/build/DAYSHIFT.app"
 
 cd "$project_dir"
-swift build -c release
+swift build -c release --jobs 1
 
 rm -rf "$app_bundle"
 mkdir -p "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources"
