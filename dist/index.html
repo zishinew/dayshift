@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11110f">
+  <title>DAY//SHIFT — Life Manager</title>
+  <meta name="description" content="Turn everyday language into organized tasks, priorities, and calendar plans.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c7ff38'/%3E%3Cpath d='M17 33l9 9 21-23' fill='none' stroke='%2311110f' stroke-width='8' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E">
+  <style>
+    :root{--ink:#11110f;--paper:#f4f3ed;--lime:#c7ff38;--orange:#ff6238;--muted:#a4a39d;--line:#33332f;--panel:#1b1b18;--white:#fff;--shadow:8px 8px 0 #070706}
+    *{box-sizing:border-box}html{font-size:16px}body{margin:0;background:var(--ink);color:var(--paper);font-family:Manrope,sans-serif;min-height:100vh}button,input{font:inherit}.shell{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh}.side{border-right:1px solid var(--line);padding:28px 22px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.04em}.brand-mark{width:38px;height:38px;background:var(--lime);color:var(--ink);display:grid;place-items:center;font-size:22px}.slash{color:var(--lime)}.nav{display:grid;gap:7px;margin-top:48px}.nav button{appearance:none;border:0;background:transparent;color:var(--muted);display:flex;align-items:center;gap:12px;padding:12px 10px;text-align:left;cursor:pointer}.nav button.active{background:var(--paper);color:var(--ink);font-weight:700}.nav-icon{font-family:'DM Mono',monospace}.side-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:.8rem;line-height:1.5}.side-foot strong{color:var(--lime);display:block;font-family:'DM Mono',monospace;font-size:1.25rem}.main{padding:24px clamp(24px,4vw,64px) 48px;overflow:hidden}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:34px}.date-kicker{font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;font-size:.8rem;letter-spacing:.08em}.avatar{width:40px;height:40px;border:1px solid var(--line);display:grid;place-items:center;font-weight:800}.capture{border:1px solid var(--line);background:var(--panel);padding:14px;box-shadow:var(--shadow);display:grid;grid-template-columns:1fr auto;gap:12px}.capture input{background:transparent;color:var(--white);border:0;outline:0;padding:14px 12px;font-size:clamp(1rem,2vw,1.25rem);min-width:0}.capture input::placeholder{color:#76766f}.add{border:0;background:var(--lime);color:var(--ink);font-weight:800;padding:0 22px;cursor:pointer}.interpret{grid-column:1/-1;border-top:1px solid var(--line);padding:12px;display:flex;gap:22px;align-items:center;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--muted);flex-wrap:wrap}.interpret b{color:var(--paper);font-weight:500}.pill{border:1px solid #4a4a43;padding:5px 8px}.grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr);gap:34px;margin-top:44px}.section-head{display:flex;align-items:end;justify-content:space-between;margin-bottom:20px}.section-head h1,.section-head h2{margin:0;text-transform:uppercase;font-size:clamp(1.8rem,4vw,3.7rem);line-height:.9;letter-spacing:-.07em}.section-head span{font-family:'DM Mono',monospace;color:var(--muted);font-size:.75rem}.tasks{display:grid;gap:10px}.task{border-top:1px solid var(--line);display:grid;grid-template-columns:34px 1fr auto;gap:14px;align-items:center;padding:17px 4px}.check{width:26px;height:26px;border:1px solid #65655e;background:transparent}.task-title{font-weight:700;font-size:1rem}.task-meta{margin-top:5px;color:var(--muted);font-size:.76rem;display:flex;gap:10px;align-items:center}.priority{font-family:'DM Mono',monospace;font-size:.66rem;text-transform:uppercase;padding:4px 7px;border:1px solid currentColor}.priority.high{color:var(--orange)}.priority.medium{color:var(--lime)}.when{text-align:right;font-family:'DM Mono',monospace;font-size:.72rem}.when strong{display:block;color:var(--paper);font-size:.88rem}.calendar{background:var(--paper);color:var(--ink);padding:22px}.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}.cal-head h2{margin:0;font-size:1.15rem;letter-spacing:-.04em}.cal-arrows{display:flex}.cal-arrows button{width:34px;height:34px;border:1px solid var(--ink);background:transparent;cursor:pointer}.week,.days{display:grid;grid-template-columns:repeat(7,1fr)}.week div{font-family:'DM Mono',monospace;text-align:center;font-size:.65rem;color:#77766f;padding-bottom:12px}.day{min-height:62px;padding:8px;border-top:1px solid #d0cfc7;font-family:'DM Mono',monospace;font-size:.72rem;position:relative}.day.muted{color:#afaea6}.day.today{background:var(--lime);font-weight:700}.dots{position:absolute;bottom:8px;left:8px;display:flex;gap:3px}.dot{width:5px;height:5px;background:var(--ink);border-radius:50%}.dot.hot{background:var(--orange)}.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}.stat{background:var(--ink);padding:16px}.stat b{font-size:1.5rem;display:block;letter-spacing:-.05em}.stat span{font-family:'DM Mono',monospace;color:var(--muted);font-size:.66rem;text-transform:uppercase}.mobile-menu{display:none}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .task.done .task-title{text-decoration:line-through;color:#74746e}.task.done .check{background:var(--lime);border-color:var(--lime);position:relative}.task.done .check:after{content:'✓';color:var(--ink);position:absolute;inset:0;display:grid;place-items:center;font-weight:900}.task-remove{border:0;background:none;color:var(--muted);cursor:pointer;padding:0;font-size:.7rem;text-decoration:underline}.empty{border:1px dashed var(--line);padding:32px;text-align:center;color:var(--muted)}.empty b{display:block;color:var(--paper);font-size:1.1rem;margin-bottom:6px}.day{cursor:pointer}.day:hover,.day.selected{outline:2px solid var(--orange);outline-offset:-2px}.toast{position:fixed;right:26px;bottom:26px;background:var(--lime);color:var(--ink);padding:15px 18px;font-weight:800;transform:translateY(100px);opacity:0;transition:.25s;z-index:30;box-shadow:5px 5px 0 #000}.toast.show{transform:none;opacity:1}.eyebrow{color:var(--lime);font-family:'DM Mono',monospace;font-size:.7rem;letter-spacing:.1em;margin-bottom:8px}.calendar-note{font-family:'DM Mono',monospace;font-size:.68rem;color:#77766f;margin-top:18px;border-top:1px solid #d0cfc7;padding-top:12px}.clear-completed{border:1px solid var(--line);color:var(--muted);background:transparent;padding:8px 10px;cursor:pointer;font-size:.72rem;display:none}.clear-completed.visible{display:block}
+    @media(max-width:900px){.shell{display:block}.side{display:none}.side.open{display:flex;position:fixed;z-index:20;background:var(--ink);inset:0 auto 0 0;width:min(280px,88vw);box-shadow:12px 0 0 rgba(0,0,0,.35)}.main{padding:20px}.mobile-menu{display:block;background:transparent;color:var(--paper);border:1px solid var(--line);height:40px;width:40px}.topbar{margin-bottom:22px}.grid{grid-template-columns:1fr}.capture{grid-template-columns:1fr auto}.calendar{margin-bottom:30px}}
+    @media(max-width:520px){.capture{display:flex;flex-wrap:wrap}.capture input{width:100%}.add{width:100%;min-height:50px}.interpret{width:100%;gap:10px}.grid{margin-top:36px;gap:28px}.section-head h1{font-size:2.5rem}.task{grid-template-columns:28px 1fr}.when{grid-column:2;text-align:left;display:flex;gap:8px}.when strong{display:inline}.calendar{padding:14px}.day{min-height:52px;padding:6px}.stat-row{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="side">
+      <div class="brand"><span class="brand-mark">✓</span><span>DAY<span class="slash">//</span>SHIFT</span></div>
+      <nav class="nav" aria-label="Primary navigation">
+        <button class="active" data-view="today"><span class="nav-icon">01</span> Today</button>
+        <button data-view="calendar"><span class="nav-icon">02</span> Calendar</button>
+        <button data-view="all"><span class="nav-icon">03</span> All tasks</button>
+        <button data-view="completed"><span class="nav-icon">04</span> Completed</button>
+      </nav>
+      <div class="side-foot"><strong>68%</strong>WEEK IN CONTROL<br>12 of 18 tasks cleared</div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" aria-label="Open navigation">☰</button>
+        <div class="date-kicker" id="todayLabel">Friday · September 18</div>
+        <div class="avatar" aria-label="Profile">ZS</div>
+      </header>
+      <form class="capture" id="captureForm">
+        <label class="sr-only" for="captureInput">Add a task in natural language</label>
+        <input id="captureInput" autocomplete="off" value="I have a quiz next Wednesday" aria-describedby="parsePreview">
+        <button class="add" type="submit">MAKE IT REAL ↗</button>
+        <div class="interpret" id="parsePreview">
+          <span>UNDERSTOOD AS</span><span class="pill">TASK · <b>Study for quiz</b></span><span class="pill">DUE · <b>Wed, Sep 23</b></span><span class="pill">PRIORITY · <b>Medium</b></span>
+        </div>
+      </form>
+      <div class="grid">
+        <section>
+          <div class="section-head"><div><div class="eyebrow" id="viewEyebrow">YOUR DAILY ATTACK PLAN</div><h1 id="viewTitle">Today<br>is yours.</h1></div><button class="clear-completed" id="clearCompleted">Clear completed</button><span id="taskCount">0 OPEN / 0 TOTAL</span></div>
+          <div class="tasks" id="taskList" aria-live="polite"></div>
+          <div class="stat-row"><div class="stat"><b id="focusStat">0h</b><span>Focus planned</span></div><div class="stat"><b id="deadlineStat">0</b><span>Deadlines</span></div><div class="stat"><b id="streakStat">1</b><span>Days streak</span></div></div>
+        </section>
+        <section class="calendar" aria-label="Monthly calendar">
+          <div class="cal-head"><h2 id="calendarTitle">September 2026</h2><div class="cal-arrows"><button id="prevMonth" aria-label="Previous month">←</button><button id="nextMonth" aria-label="Next month">→</button></div></div>
+          <div class="week" aria-hidden="true"><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div><div>S</div></div>
+          <div class="days" id="calendarDays"></div>
+          <div class="calendar-note" id="calendarNote">SELECT A DAY TO SEE ITS TASKS</div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => [...document.querySelectorAll(s)];
+    const pad = (n) => String(n).padStart(2,'0');
+    const key = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+    const today = new Date(); today.setHours(0,0,0,0);
+    const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+    const nextWeekday = (day) => { let diff=(day-today.getDay()+7)%7; if(diff===0) diff=7; return addDays(today,diff); };
+    const prettyDate = (iso) => { const d=new Date(iso+'T12:00:00'); if(key(d)===key(today)) return 'Today'; if(key(d)===key(addDays(today,1))) return 'Tomorrow'; return d.toLocaleDateString([], {weekday:'short',month:'short',day:'numeric'}); };
+    const esc = (s) => String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+    const weekdays = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+    function parseNatural(raw){
+      const lower=raw.toLowerCase().trim(); let due=new Date(today), time='Anytime', priority='Medium';
+      if(/tomorrow/.test(lower)) due=addDays(today,1);
+      else if(/next week/.test(lower)) due=addDays(today,7);
+      else {
+        const wd=weekdays.findIndex(w=>lower.includes(w));
+        if(wd>=0) due=nextWeekday(wd);
+      }
+      const monthMatch=lower.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\b/);
+      if(monthMatch){ const months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec']; const mi=months.findIndex(m=>monthMatch[1].startsWith(m)); due=new Date(today.getFullYear(),mi,Number(monthMatch[2])); if(due<today) due.setFullYear(due.getFullYear()+1); }
+      const numeric=lower.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+      if(numeric){ let year=numeric[3]?Number(numeric[3]):today.getFullYear(); if(year<100) year+=2000; due=new Date(year,Number(numeric[1])-1,Number(numeric[2])); }
+      const tm=lower.match(/\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/);
+      if(tm) time=Number(tm[1])+':'+(tm[2]||'00')+' '+tm[3].toUpperCase();
+      else if(/\bnoon\b/.test(lower)) time='12:00 PM'; else if(/\btonight\b/.test(lower)) time='7:00 PM'; else if(/\bmorning\b/.test(lower)) time='9:00 AM'; else if(/\bafternoon\b/.test(lower)) time='2:00 PM';
+      if(/urgent|asap|critical|high priority|important/.test(lower)) priority='High'; else if(/low priority|whenever|sometime/.test(lower)) priority='Low';
+      let category=/quiz|exam|study|class|assignment|homework|essay/.test(lower)?'School':/doctor|dentist|gym|medic|prescription|workout/.test(lower)?'Health':/meeting|email|report|client|project|work/.test(lower)?'Work':/buy|grocery|pick up|shopping/.test(lower)?'Errands':'Personal';
+      let title=raw.trim().replace(/^i\s+(?:have|need|want|must|should)\s+(?:to\s+)?/i,'').replace(/\b(today|tomorrow|tonight|next week|this (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|on (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at \d{1,2}(?::\d{2})?\s*(?:am|pm)|by \d{1,2}(?::\d{2})?\s*(?:am|pm)|urgent|important|asap|high priority|low priority)\b/gi,'').replace(/\s+/g,' ').trim().replace(/^(an?|the)\s+/i,'');
+      if(/quiz/.test(lower)&&/i have/.test(lower)) title='Study for '+(title||'quiz');
+      title=title.replace(/^./,c=>c.toUpperCase())||'Untitled task';
+      return {title,due:key(due),time,priority,category,duration: priority==='High'?60:30};
+    }
+
+    const nextWed=key(nextWeekday(3));
+    const seed=[
+      {id:'seed-1',title:'Finish biology notes',due:key(today),time:'9:00 AM',priority:'High',category:'School',duration:40,done:false},
+      {id:'seed-2',title:'Pick up prescription',due:key(today),time:'12:30 PM',priority:'Medium',category:'Health',duration:15,done:false},
+      {id:'seed-3',title:'Call Mom',due:key(today),time:'6:00 PM',priority:'Low',category:'Personal',duration:20,done:false},
+      {id:'seed-4',title:'Send project update',due:key(today),time:'4:00 PM',priority:'High',category:'Work',duration:25,done:true},
+      {id:'seed-5',title:'Study for quiz',due:nextWed,time:'Anytime',priority:'Medium',category:'School',duration:60,done:false}
+    ];
+    let tasks; try{tasks=JSON.parse(localStorage.getItem('dayshift.tasks'))||seed}catch(e){tasks=seed}
+    let view='today', selected=key(today), monthCursor=new Date(today.getFullYear(),today.getMonth(),1), toastTimer;
+    const save=()=>localStorage.setItem('dayshift.tasks',JSON.stringify(tasks));
+    const showToast=(msg)=>{const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200)};
+
+    function updatePreview(){
+      const value=$('#captureInput').value.trim(); const p=parseNatural(value||'Untitled task');
+      $('#parsePreview').innerHTML='<span>UNDERSTOOD AS</span><span class="pill">TASK · <b>'+esc(p.title)+'</b></span><span class="pill">DUE · <b>'+esc(prettyDate(p.due))+'</b></span><span class="pill">PRIORITY · <b>'+p.priority+'</b></span>';
+    }
+    function filteredTasks(){ if(view==='today') return tasks.filter(t=>t.due===key(today)); if(view==='completed') return tasks.filter(t=>t.done); if(view==='calendar') return tasks.filter(t=>t.due===selected); return tasks; }
+    function renderTasks(){
+      const list=filteredTasks().sort((a,b)=>Number(a.done)-Number(b.done)||({High:0,Medium:1,Low:2}[a.priority]-{High:0,Medium:1,Low:2}[b.priority]));
+      const names={today:['YOUR DAILY ATTACK PLAN','Today<br>is yours.'],calendar:['SELECTED DAY',prettyDate(selected)],all:['EVERYTHING ON YOUR RADAR','All<br>tasks.'],completed:['PROOF OF PROGRESS','Done<br>& dusted.']};
+      $('#viewEyebrow').textContent=names[view][0]; $('#viewTitle').innerHTML=names[view][1];
+      $('#taskCount').textContent=list.filter(t=>!t.done).length+' OPEN / '+list.length+' TOTAL';
+      $('#clearCompleted').classList.toggle('visible',view==='completed'&&list.length>0);
+      $('#taskList').innerHTML=list.length?list.map(t=>'<article class="task '+(t.done?'done':'')+'"><button class="check" data-complete="'+t.id+'" aria-label="'+(t.done?'Reopen ':'Complete ')+esc(t.title)+'"></button><div><div class="task-title">'+esc(t.title)+'</div><div class="task-meta"><span class="priority '+t.priority.toLowerCase()+'">'+t.priority+'</span><span>'+esc(t.category)+'</span><button class="task-remove" data-remove="'+t.id+'">remove</button></div></div><div class="when"><strong>'+esc(t.time)+'</strong>'+prettyDate(t.due)+'</div></article>').join(''):'<div class="empty"><b>Nothing here yet.</b>Say what you need to do above. DAY//SHIFT will organize it.</div>';
+      const active=tasks.filter(t=>!t.done), mins=active.filter(t=>t.due===key(today)).reduce((a,t)=>a+t.duration,0);
+      $('#focusStat').textContent=(mins>=60?Math.floor(mins/60)+'h ':'')+(mins%60?mins%60+'m':''); $('#deadlineStat').textContent=active.filter(t=>t.due<=key(addDays(today,2))).length; $('#streakStat').textContent=Math.max(1,Number(localStorage.getItem('dayshift.streak')||4));
+      $$('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+    }
+    function renderCalendar(){
+      const y=monthCursor.getFullYear(),m=monthCursor.getMonth(), first=new Date(y,m,1), start=(first.getDay()+6)%7, last=new Date(y,m+1,0).getDate(), prevLast=new Date(y,m,0).getDate();
+      $('#calendarTitle').textContent=monthCursor.toLocaleDateString([],{month:'long',year:'numeric'});
+      let html=''; for(let i=0;i<42;i++){let d,muted=false;if(i<start){d=new Date(y,m-1,prevLast-start+i+1);muted=true}else if(i>=start+last){d=new Date(y,m+1,i-start-last+1);muted=true}else d=new Date(y,m,i-start+1);const iso=key(d), matches=tasks.filter(t=>t.due===iso), hot=matches.some(t=>t.priority==='High'&&!t.done);html+='<button class="day '+(muted?'muted ':'')+(iso===key(today)?'today ':'')+(iso===selected?'selected':'')+'" data-date="'+iso+'" aria-label="'+prettyDate(iso)+', '+matches.length+' tasks">'+d.getDate()+(matches.length?'<span class="dots">'+matches.slice(0,3).map((t,j)=>'<i class="dot '+(hot&&j===0?'hot':'')+'"></i>').join('')+'</span>':'')+'</button>'}
+      $('#calendarDays').innerHTML=html; const dayTasks=tasks.filter(t=>t.due===selected); $('#calendarNote').textContent=dayTasks.length?dayTasks.length+' TASK'+(dayTasks.length===1?'':'S')+' ON '+prettyDate(selected).toUpperCase():'NO TASKS ON '+prettyDate(selected).toUpperCase();
+    }
+    function render(){renderTasks();renderCalendar();save()}
+
+    $('#todayLabel').textContent=today.toLocaleDateString([],{weekday:'long',month:'long',day:'numeric'});
+    $('#captureInput').addEventListener('input',updatePreview);
+    $('#captureForm').addEventListener('submit',e=>{e.preventDefault();const raw=$('#captureInput').value.trim();if(!raw){showToast('Give me something to work with.');return}const p=parseNatural(raw),task={...p,id:'task-'+Date.now(),done:false};tasks.unshift(task);selected=task.due;view=task.due===key(today)?'today':'calendar';$('#captureInput').value='';updatePreview();render();showToast('Locked in: '+task.title);});
+    $('#taskList').addEventListener('click',e=>{const complete=e.target.closest('[data-complete]'),remove=e.target.closest('[data-remove]');if(complete){const t=tasks.find(x=>x.id===complete.dataset.complete);if(t){t.done=!t.done;showToast(t.done?'Task cleared. Nice work.':'Task reopened.');render()}}if(remove){tasks=tasks.filter(x=>x.id!==remove.dataset.remove);render();showToast('Task removed.')}});
+    $('.nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(!b)return;view=b.dataset.view;if(view==='calendar')selected=key(today);render();$('.side').classList.remove('open')});
+    $('#calendarDays').addEventListener('click',e=>{const d=e.target.closest('[data-date]');if(!d)return;selected=d.dataset.date;view='calendar';const date=new Date(selected+'T12:00:00');monthCursor=new Date(date.getFullYear(),date.getMonth(),1);render()});
+    $('#prevMonth').addEventListener('click',()=>{monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()-1,1);renderCalendar()}); $('#nextMonth').addEventListener('click',()=>{monthCursor=new Date(monthCursor.getFullYear(),monthCursor.getMonth()+1,1);renderCalendar()});
+    $('.mobile-menu').addEventListener('click',()=>$('.side').classList.toggle('open')); $('#clearCompleted').addEventListener('click',()=>{tasks=tasks.filter(t=>!t.done);render();showToast('Completed tasks cleared.');});
+    function registerWebMCP(){const mc=document.modelContext;if(!mc?.registerTool)return;const signal=new AbortController().signal;try{mc.registerTool({name:'create_task',title:'Create task',description:'Create a DAY//SHIFT task from everyday language and update the task list and calendar.',inputSchema:{type:'object',properties:{text:{type:'string',minLength:1}},required:['text'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute({text}){if(typeof text!=='string'||!text.trim())throw new Error('text is required');const task={...parseNatural(text),id:'task-'+Date.now(),done:false};tasks.unshift(task);selected=task.due;view=task.due===key(today)?'today':'calendar';render();return {id:task.id,title:task.title,due:task.due,priority:task.priority}}},{signal});mc.registerTool({name:'list_tasks',title:'List tasks',description:'Read current tasks, optionally filtered by status.',inputSchema:{type:'object',properties:{status:{type:'string',enum:['all','open','completed']}},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute({status='all'}={}){return {tasks:tasks.filter(t=>status==='all'||(status==='open'?!t.done:t.done))}}},{signal});mc.registerTool({name:'complete_task',title:'Complete task',description:'Mark an existing DAY//SHIFT task complete.',inputSchema:{type:'object',properties:{id:{type:'string'}},required:['id'],additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute({id}){const task=tasks.find(t=>t.id===id);if(!task)throw new Error('Task not found');task.done=true;render();return {id,completed:true}}},{signal})}catch(e){console.warn('WebMCP unavailable',e)}}
+    updatePreview();render();registerWebMCP();
+  </script>
+</body>
+</html>
