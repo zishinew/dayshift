@@ -2,6 +2,8 @@ import Foundation
 
 enum TaskCommand: Equatable {
     case add(ParsedTask)
+    case addClass(code: String, name: String)
+    case repeatTask(query: String, rule: RepeatRule)
     case complete(String)
     case reopen(String)
     case delete(String)
@@ -19,7 +21,9 @@ enum TaskCommand: Equatable {
     var preview: String {
         switch self {
         case .add(let task):
-            "Add “\(task.title)” · \(task.dueDate.formatted(date: .abbreviated, time: hasTime(task.dueDate) ? .shortened : .omitted)) · \(task.priority.rawValue)"
+            "Add “\(task.title)” · \(task.dueDate.formatted(date: .abbreviated, time: hasTime(task.dueDate) ? .shortened : .omitted)) · \(task.priority.rawValue)\(task.repeatRule.map { " · \($0.label)" } ?? "")"
+        case .addClass(let code, let name): "Add class \(code)\(name.isEmpty ? "" : " · \(name)")"
+        case .repeatTask(let query, let rule): "Repeat “\(query)” \(rule.label)"
         case .complete(let query): "Complete “\(query)”"
         case .reopen(let query): "Reopen “\(query)”"
         case .delete(let query): "Delete “\(query)”"
@@ -62,6 +66,18 @@ struct TaskCommandInterpreter {
         case "previous month", "prev month", "show previous month": return .previousMonth
         case "clear completed", "delete completed", "remove completed": return .clearCompleted
         default: break
+        }
+
+        if let groups = captures(#"^(?:add\s+)?class\s+([a-z]{2,8}\s?\d{2,4})(?:\s*(?:=|:|-|,)\s*|\s+)(.*)$"#, in: value) {
+            return .addClass(code: groups[0].replacingOccurrences(of: " ", with: "").uppercased(), name: groups[1])
+        }
+
+        if let groups = captures(#"^repeat\s+(.+?)\s+every\s+(?:(\d+)\s+)?(day|days|week|weeks|month|months|weekday|weekdays)$"#, in: value) {
+            let interval = Int(groups[1]) ?? 1
+            let unitText = groups[2].lowercased()
+            let isWeekday = unitText.hasPrefix("weekday")
+            let unit: RepeatUnit = isWeekday ? .week : unitText.hasPrefix("day") ? .day : unitText.hasPrefix("week") ? .week : .month
+            return .repeatTask(query: cleanTarget(groups[0]), rule: RepeatRule(interval: isWeekday ? 1 : interval, unit: unit))
         }
 
         if let groups = captures(#"^(?:set\s+)?(?:the\s+)?priority\s+(?:of|for)\s+(.+?)\s+(?:to\s+)?(high|medium|low)$"#, in: value),

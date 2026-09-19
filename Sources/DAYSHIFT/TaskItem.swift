@@ -6,6 +6,36 @@ enum TaskPriority: String, Codable, CaseIterable {
     case low = "Low"
 }
 
+enum RepeatUnit: String, Codable, CaseIterable {
+    case day, week, month
+}
+
+struct RepeatRule: Codable, Hashable, Equatable {
+    var interval: Int
+    var unit: RepeatUnit
+
+    var label: String {
+        let unitName = interval == 1 ? unit.rawValue : unit.rawValue + "s"
+        return "every \(interval) \(unitName)"
+    }
+
+    func nextDate(after date: Date, calendar: Calendar = .current) -> Date {
+        calendar.date(byAdding: unit == .day ? .day : unit == .week ? .weekOfYear : .month, value: interval, to: date) ?? date
+    }
+}
+
+struct ClassItem: Identifiable, Codable, Hashable {
+    var id: UUID
+    var code: String
+    var name: String
+
+    init(id: UUID = UUID(), code: String, name: String) {
+        self.id = id
+        self.code = code
+        self.name = name
+    }
+}
+
 struct TaskItem: Identifiable, Codable, Hashable {
     var id: UUID
     var title: String
@@ -13,6 +43,12 @@ struct TaskItem: Identifiable, Codable, Hashable {
     var priority: TaskPriority
     var isComplete: Bool
     var createdAt: Date
+    var classCode: String?
+    var repeatRule: RepeatRule?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, dueDate, priority, isComplete, createdAt, classCode, repeatRule
+    }
 
     init(
         id: UUID = UUID(),
@@ -20,7 +56,9 @@ struct TaskItem: Identifiable, Codable, Hashable {
         dueDate: Date,
         priority: TaskPriority,
         isComplete: Bool = false,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        classCode: String? = nil,
+        repeatRule: RepeatRule? = nil
     ) {
         self.id = id
         self.title = title
@@ -28,6 +66,20 @@ struct TaskItem: Identifiable, Codable, Hashable {
         self.priority = priority
         self.isComplete = isComplete
         self.createdAt = createdAt
+        self.classCode = classCode
+        self.repeatRule = repeatRule
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        title = try values.decode(String.self, forKey: .title)
+        dueDate = try values.decode(Date.self, forKey: .dueDate)
+        priority = try values.decode(TaskPriority.self, forKey: .priority)
+        isComplete = try values.decode(Bool.self, forKey: .isComplete)
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        classCode = try values.decodeIfPresent(String.self, forKey: .classCode)
+        repeatRule = try values.decodeIfPresent(RepeatRule.self, forKey: .repeatRule)
     }
 }
 
@@ -35,4 +87,6 @@ struct ParsedTask: Equatable {
     let title: String
     let dueDate: Date
     let priority: TaskPriority
+    let classCode: String?
+    let repeatRule: RepeatRule?
 }

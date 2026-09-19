@@ -14,6 +14,7 @@ struct ContentView: View {
     private let serif = "Times New Roman"
 
     private var dayTasks: [TaskItem] { store.tasks(on: selectedDate) }
+    private var classSuggestion: ClassItem? { store.suggestedClass(for: input) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -181,6 +182,11 @@ struct ContentView: View {
                     .font(.custom(serif, size: 15))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in feedback = nil }
+                    .onKeyPress(.tab) {
+                        guard let suggestion = classSuggestion else { return .ignored }
+                        input = input.trimmingCharacters(in: .whitespacesAndNewlines) + " " + suggestion.code.lowercased()
+                        return .handled
+                    }
                 Text("return ↵")
                     .font(.custom(serif, size: 10))
                     .foregroundStyle(.secondary)
@@ -193,10 +199,17 @@ struct ContentView: View {
                     .foregroundStyle(Color.black)
                     .lineLimit(2)
             } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(interpreter.interpret(input).preview.lowercased())
-                    .font(.custom(serif, size: 10))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                if let classSuggestion {
+                    Text("tab ↹ add \(classSuggestion.code.lowercased()) · \(classSuggestion.name.lowercased())")
+                        .font(.custom(serif, size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                } else {
+                    Text(interpreter.interpret(input).preview.lowercased())
+                        .font(.custom(serif, size: 10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
         }
         .padding(.horizontal, 38)
@@ -213,6 +226,8 @@ struct ContentView: View {
 
         switch command {
         case .add(let task): store.add(task); selectedDate = Calendar.current.startOfDay(for: task.dueDate); page = .todo; feedback = "added “\(task.title)”."
+        case .addClass(let code, let name): store.addClass(code: code, name: name); feedback = "saved class \(code.lowercased())."
+        case .repeatTask(let query, let rule): feedback = store.setRepeat(matching: query, to: rule).map { "\($0.lowercased()) will repeat \(rule.label)." } ?? notFound(query)
         case .complete(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: true), verb: "completed", query: query)
         case .reopen(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: false), verb: "reopened", query: query)
         case .delete(let query): feedback = mutationFeedback(store.delete(matching: query), verb: "deleted", query: query)
@@ -265,6 +280,8 @@ private struct TaskRow: View {
     private var metadata: String {
         let calendar = Calendar.current
         let time = calendar.component(.hour, from: task.dueDate) == 0 && calendar.component(.minute, from: task.dueDate) == 0 ? "no time" : task.dueDate.formatted(date: .omitted, time: .shortened)
-        return "\(time)  ·  \(task.priority.rawValue)"
+        let classPart = task.classCode.map { "  ·  \($0.lowercased())" } ?? ""
+        let repeatPart = task.repeatRule.map { "  ·  \($0.label)" } ?? ""
+        return "\(time)  ·  \(task.priority.rawValue)\(classPart)\(repeatPart)"
     }
 }

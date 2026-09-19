@@ -54,4 +54,18 @@ final class TaskCommandInterpreterTests: XCTestCase {
         guard case .add(let task) = command else { return XCTFail("Expected an add command") }
         XCTAssertEqual(task.title, "Quiz")
     }
+
+    func testAddClassCommand() {
+        XCTAssertEqual(
+            TaskCommandInterpreter().interpret("add class math237 calculus", now: now),
+            .addClass(code: "MATH237", name: "calculus")
+        )
+    }
+
+    func testRepeatExistingTaskCommand() {
+        XCTAssertEqual(
+            TaskCommandInterpreter().interpret("repeat the quiz every 2 weeks", now: now),
+            .repeatTask(query: "quiz", rule: RepeatRule(interval: 2, unit: .week))
+        )
+    }
 }

@@ -25,4 +25,11 @@ final class NaturalLanguageParserTests: XCTestCase {
         XCTAssertEqual(calendar.component(.minute, from: result.dueDate), 30)
         XCTAssertEqual(result.priority, .high)
     }
+
+    func testRepeatingClassTask() throws {
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-18T12:00:00Z"))
+        let result = NaturalLanguageParser(calendar: calendar).parse("add a repeating math237 quiz every week", now: now)
+        XCTAssertEqual(result.classCode, "MATH237")
+        XCTAssertEqual(result.repeatRule, RepeatRule(interval: 1, unit: .week))
+    }
 }

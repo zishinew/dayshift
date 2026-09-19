@@ -12,6 +12,8 @@ struct NaturalLanguageParser {
         let lower = original.lowercased()
         let start = calendar.startOfDay(for: now)
         var dueDate = start
+        let repeatRule = repetition(in: lower)
+        let classCode = classCode(in: lower)
 
         if lower.contains("tomorrow") {
             dueDate = calendar.date(byAdding: .day, value: 1, to: start) ?? start
@@ -50,8 +52,27 @@ struct NaturalLanguageParser {
         return ParsedTask(
             title: cleanedTitle(from: original),
             dueDate: dueDate,
-            priority: priority
+            priority: priority,
+            classCode: classCode,
+            repeatRule: repeatRule
         )
+    }
+
+    private func repetition(in text: String) -> RepeatRule? {
+        guard let regex = try? NSRegularExpression(pattern: #"\bevery\s+(?:(\d+)\s+)?(day|days|week|weeks|month|months|weekday|weekdays)\b"#),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+        let interval = match.range(at: 1).location == NSNotFound ? 1 : (Range(match.range(at: 1), in: text).flatMap { Int(text[$0]) } ?? 1)
+        guard let unitRange = Range(match.range(at: 2), in: text) else { return nil }
+        let unitText = String(text[unitRange])
+        let unit: RepeatUnit = unitText.hasPrefix("day") || unitText.hasPrefix("weekday") ? .day : unitText.hasPrefix("week") ? .week : .month
+        return RepeatRule(interval: unitText.hasPrefix("weekday") ? 1 : interval, unit: unitText.hasPrefix("weekday") ? .week : unit)
+    }
+
+    private func classCode(in text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: #"\b([a-z]{2,8}\s?\d{2,4})\b"#),
+              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+              let range = Range(match.range(at: 1), in: text) else { return nil }
+        return String(text[range]).replacingOccurrences(of: " ", with: "").uppercased()
     }
 
     private func matchedWeekday(in text: String) -> Int? {
@@ -118,8 +139,9 @@ struct NaturalLanguageParser {
 
     private func cleanedTitle(from input: String) -> String {
         var title = input
-        title = replacing(#"^\s*(?:i\s+(?:have|need|want|must|should)\s+(?:to\s+)?|remind\s+me\s+to\s+|don't\s+forget\s+to\s+|remember\s+to\s+)"#, in: title)
+        title = replacing(#"^\s*(?:i\s+(?:have|need|want|must|should)\s+(?:to\s+)?|remind\s+me\s+to\s+|don't\s+forget\s+to\s+|remember\s+to\s+|add\s+(?:a\s+)?(?:repeating\s+)?)"#, in: title)
         title = replacing(#"\b(?:today|tomorrow|tonight|next week|this\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|next\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|on\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|by\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)|urgent|important|asap|critical|high priority|low priority|whenever|someday|sometime)\b"#, in: title)
+        title = replacing(#"\bevery\s+(?:(?:\d+)\s+)?(?:day|days|week|weeks|month|months|weekday|weekdays)\b"#, in: title)
         title = replacing(#"\s+"#, with: " ", in: title).trimmingCharacters(in: .whitespacesAndNewlines)
         title = replacing(#"^(?:a|an|the)\s+"#, in: title)
 
