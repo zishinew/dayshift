@@ -12,13 +12,13 @@ jobs:
 
     steps:
       - name: checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: validate Swift 5 compatibility and app bundle
         run: ./scripts/ci-check.sh
 
       - name: upload app bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dayshift-macos
           path: build/Dayshift.app
