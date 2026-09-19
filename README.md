@@ -50,3 +50,4 @@ Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No
 - `Resources/Info.plist` — app bundle metadata
 
 Pull requests should keep the app dependency-free and preserve the `swift test --jobs 1` check. GitHub Actions runs that test and builds the app on every push and pull request to `main`.
+# dayshift
