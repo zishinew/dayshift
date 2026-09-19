@@ -17,8 +17,10 @@ final class WindowManager {
         guard !configured else { return }
         configured = true
         DispatchQueue.main.async {
-            if !(window.styleMask.contains(.fullScreen)) {
-                window.toggleFullScreen(nil)
+            // Maximize within the normal macOS window frame. This fills the
+            // usable screen area while preserving the title bar and controls.
+            if !window.isZoomed {
+                window.performZoom(nil)
             }
         }
     }
