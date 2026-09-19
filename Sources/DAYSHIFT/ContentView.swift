@@ -9,7 +9,6 @@ struct ContentView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var feedback: String?
-    @State private var compact = false
 
     private let interpreter = TaskCommandInterpreter()
     private let serif = "Times New Roman"
@@ -43,15 +42,6 @@ struct ContentView: View {
                 modeButton("calendar", active: page == .calendar) { page = .calendar }
             }
             Spacer()
-
-            Button(compact ? "full" : "side") {
-                compact.toggle()
-                WindowManager.shared.setCompact(compact)
-            }
-            .font(.custom(serif, size: 11))
-            .buttonStyle(.plain)
-            .padding(.trailing, 24)
-            .accessibilityLabel(compact ? "make full screen" : "pin to side")
         }
         .padding(.top, 18)
         .frame(height: 48)
