@@ -59,8 +59,7 @@ struct ContentView: View {
     private var classPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("classes")
-                .font(.custom(serif, size: 13))
-                .fontWeight(.semibold)
+                .font(.custom(serif, size: 14))
 
             if store.classes.isEmpty {
                 Text("none")
@@ -124,7 +123,7 @@ struct ContentView: View {
                         TaskRow(task: task, serif: serif) {
                             withAnimation(motion) { store.toggle(task) }
                         }
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(.opacity)
                     }
                 }
             }
