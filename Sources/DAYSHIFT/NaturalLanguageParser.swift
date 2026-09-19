@@ -8,7 +8,7 @@ struct NaturalLanguageParser {
     }
 
     func parse(_ input: String, now: Date = Date()) -> ParsedTask {
-        let original = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = normalizingWeekdays(in: input.trimmingCharacters(in: .whitespacesAndNewlines))
         let lower = original.lowercased()
         let start = calendar.startOfDay(for: now)
         var dueDate = start
@@ -56,6 +56,71 @@ struct NaturalLanguageParser {
             classCode: classCode,
             repeatRule: repeatRule
         )
+    }
+
+    func normalizingWeekdays(in input: String) -> String {
+        guard let regex = try? NSRegularExpression(pattern: #"\b[a-z]+\b\.?"#, options: [.caseInsensitive]) else { return input }
+        let matches = regex.matches(in: input, range: NSRange(input.startIndex..., in: input))
+        var result = input
+
+        for (index, match) in matches.enumerated().reversed() {
+            guard let range = Range(match.range, in: input) else { continue }
+            let token = input[range].trimmingCharacters(in: CharacterSet(charactersIn: ".")).lowercased()
+            let previous = index > 0 ? Range(matches[index - 1].range, in: input).map { input[$0].lowercased() } : nil
+            guard let weekday = canonicalWeekday(for: token, previousWord: previous) else { continue }
+            result.replaceSubrange(range, with: weekday)
+        }
+        return result
+    }
+
+    private func canonicalWeekday(for token: String, previousWord: String?) -> String? {
+        let aliases: [String: String] = [
+            "su": "sunday", "sun": "sunday", "sund": "sunday", "sunda": "sunday", "sunday": "sunday",
+            "mo": "monday", "mon": "monday", "mond": "monday", "monda": "monday", "monday": "monday",
+            "tu": "tuesday", "tue": "tuesday", "tues": "tuesday", "tuesd": "tuesday", "tuesda": "tuesday", "tuesday": "tuesday",
+            "we": "wednesday", "wed": "wednesday", "weds": "wednesday", "wedn": "wednesday", "wedne": "wednesday", "wednes": "wednesday", "wednesd": "wednesday", "wednesda": "wednesday", "wednesday": "wednesday",
+            "th": "thursday", "thu": "thursday", "thur": "thursday", "thurs": "thursday", "thursd": "thursday", "thursda": "thursday", "thursday": "thursday",
+            "fr": "friday", "fri": "friday", "frid": "friday", "frida": "friday", "friday": "friday",
+            "sa": "saturday", "sat": "saturday", "satu": "saturday", "satur": "saturday", "saturd": "saturday", "saturda": "saturday", "saturday": "saturday"
+        ]
+        if let exact = aliases[token] { return exact }
+
+        let commonMisspellings: [String: String] = [
+            "sundy": "sunday", "sundey": "sunday",
+            "mnday": "monday", "mondy": "monday", "monay": "monday",
+            "tuseday": "tuesday", "teusday": "tuesday", "tusday": "tuesday",
+            "wensday": "wednesday", "wednsday": "wednesday", "wendsday": "wednesday", "wensdey": "wednesday",
+            "thrusday": "thursday", "thurday": "thursday", "thusday": "thursday",
+            "firday": "friday", "fridy": "friday",
+            "saterday": "saturday", "sturday": "saturday", "satrday": "saturday"
+        ]
+        if let corrected = commonMisspellings[token] { return corrected }
+
+        let dateSignals = ["next", "this", "on", "to", "for", "until", "by"]
+        guard previousWord.map(dateSignals.contains) == true, token.count >= 3 else { return nil }
+        return calendar.weekdaySymbols
+            .map { $0.lowercased() }
+            .min(by: { editDistance(token, $0) < editDistance(token, $1) })
+            .flatMap { editDistance(token, $0) <= 2 ? $0 : nil }
+    }
+
+    private func editDistance(_ lhs: String, _ rhs: String) -> Int {
+        let left = Array(lhs)
+        let right = Array(rhs)
+        var previous = Array(0...right.count)
+
+        for (leftIndex, leftCharacter) in left.enumerated() {
+            var current = [leftIndex + 1]
+            for (rightIndex, rightCharacter) in right.enumerated() {
+                current.append(min(
+                    current[rightIndex] + 1,
+                    previous[rightIndex + 1] + 1,
+                    previous[rightIndex] + (leftCharacter == rightCharacter ? 0 : 1)
+                ))
+            }
+            previous = current
+        }
+        return previous[right.count]
     }
 
     private func repetition(in text: String) -> RepeatRule? {

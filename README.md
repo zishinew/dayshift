@@ -28,6 +28,7 @@ Type plain English into the command bar, for example:
 quiz next wednesday
 finish quiz
 move quiz to friday
+move quiz to next weds
 make quiz high priority
 add quiz next week
 add a repeating quiz every 2 weeks
@@ -36,6 +37,8 @@ remove quiz
 add class math237
 i have classes math237, cs136, stat230
 ```
+
+Weekdays accept common short forms such as `mon`, `tue`, `tues`, `wed`, `weds`, `thu`, `thur`, `thurs`, `fri`, and `sat`. Common weekday misspellings are corrected automatically.
 
 Press `tab` when a school task has a suggested class. Completing a repeating task creates its next occurrence automatically.
 

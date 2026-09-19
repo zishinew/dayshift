@@ -55,7 +55,7 @@ struct TaskCommandInterpreter {
     }
 
     func interpret(_ input: String, now: Date = Date()) -> TaskCommand {
-        let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = taskParser.normalizingWeekdays(in: input.trimmingCharacters(in: .whitespacesAndNewlines))
         let lower = value.lowercased()
 
         switch lower {
