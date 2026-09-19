@@ -1,6 +1,7 @@
 import SwiftUI
 
 @main
+@MainActor
 struct DAYSHIFTApp: App {
     @State private var store = TaskStore()
 

@@ -118,7 +118,7 @@ final class TaskStore {
     }
 
     func clearCompleted() -> Int {
-        let count = tasks.count(where: \.isComplete)
+        let count = tasks.filter(\.isComplete).count
         tasks.removeAll(where: \.isComplete)
         save()
         return count
