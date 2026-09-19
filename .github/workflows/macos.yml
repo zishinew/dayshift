@@ -1,0 +1,27 @@
+name: macos
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: macos-14
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: test
+        run: swift test --jobs 1
+
+      - name: build app
+        run: ./scripts/build-app.sh
+
+      - name: upload app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: dayshift-macos
+          path: build/DAYSHIFT.app

@@ -5,3 +5,7 @@ build/
 .build/
 .swiftpm/
 Resources/AppIcon.iconset/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.idea/
