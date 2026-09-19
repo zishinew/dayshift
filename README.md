@@ -29,11 +29,11 @@ quiz next wednesday
 finish quiz
 move quiz to friday
 make quiz high priority
-add math237 quiz next week
-add a repeating math237 quiz every 2 weeks
+add quiz next week
+add a repeating quiz every 2 weeks
 repeat quiz every monday
 remove quiz
-add class math237 linear algebra
+add class linear algebra
 ```
 
 Press `tab` when a school task has a suggested class. Completing a repeating task creates its next occurrence automatically.
