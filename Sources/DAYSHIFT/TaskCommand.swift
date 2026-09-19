@@ -105,11 +105,27 @@ struct TaskCommandInterpreter {
             return .rename(query: cleanTarget(groups[0]), title: groups[1])
         }
 
-        if let groups = captures(#"^(?:move|reschedule)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:change|set)\s+(?:the\s+)?(?:due\s+)?date\s+(?:of|for)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
             return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
-        if let groups = captures(#"^(?:complete|finish)\s+(?:task\s+)?(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:move|reschedule|push(?:\s+back)?|postpone|defer|schedule)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+(?:to|for|until)\s+(.+)$"#, in: value) {
+            return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
+        }
+
+        if let groups = captures(#"^(?:change|set)\s+(.+?)\s+(?:due\s+)?date\s+to\s+(.+)$"#, in: value) {
+            return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
+        }
+
+        if let groups = captures(#"^(?:complete|finish|check\s+off|tick\s+off)\s+(?:the\s+)?(?:task\s+)?(.+)$"#, in: value) {
+            return .complete(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^done\s+with\s+(.+)$"#, in: value) {
+            return .complete(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^(.+?)\s+is\s+(?:done|complete|completed)$"#, in: value) {
             return .complete(cleanTarget(groups[0]))
         }
 
@@ -121,7 +137,7 @@ struct TaskCommandInterpreter {
             return .complete(cleanTarget(groups[0]))
         }
 
-        if let groups = captures(#"^(?:reopen|uncomplete|undo)\s+(?:task\s+)?(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:reopen|uncomplete|uncheck|undo)\s+(?:task\s+)?(.+)$"#, in: value) {
             return .reopen(cleanTarget(groups[0]))
         }
 

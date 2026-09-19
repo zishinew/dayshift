@@ -38,6 +38,26 @@ final class TaskCommandInterpreterTests: XCTestCase {
         )
     }
 
+    func testCheckOffCommand() {
+        XCTAssertEqual(TaskCommandInterpreter().interpret("check off the quiz", now: now), .complete("quiz"))
+        XCTAssertEqual(TaskCommandInterpreter().interpret("the quiz is done", now: now), .complete("quiz"))
+    }
+
+    func testNaturalReschedulingCommands() {
+        let interpreter = TaskCommandInterpreter()
+        let commands = [
+            interpreter.interpret("push the quiz to next Wednesday", now: now),
+            interpreter.interpret("change the due date of the quiz to next Wednesday", now: now),
+            interpreter.interpret("schedule quiz for next Wednesday", now: now)
+        ]
+
+        for command in commands {
+            guard case .reschedule(let query, let date) = command else { return XCTFail("Expected reschedule command") }
+            XCTAssertEqual(query, "quiz")
+            XCTAssertEqual(Calendar.current.component(.weekday, from: date), 4)
+        }
+    }
+
     func testRenameCommand() {
         XCTAssertEqual(
             TaskCommandInterpreter().interpret("rename quiz to chemistry quiz", now: now),

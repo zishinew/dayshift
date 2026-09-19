@@ -68,14 +68,8 @@ struct ContentView: View {
     private var todoPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
-                        .font(.custom(serif, size: 22))
-                    Spacer()
-                    Text("\(dayTasks.filter { !$0.isComplete }.count) open")
-                        .font(.custom(serif, size: 11))
-                        .foregroundStyle(.secondary)
-                }
+                Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
+                    .font(.custom(serif, size: 22))
                 .padding(.bottom, 22)
 
                 if dayTasks.isEmpty {
@@ -84,7 +78,9 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(dayTasks) { task in
-                        TaskRow(task: task, serif: serif)
+                        TaskRow(task: task, serif: serif) {
+                            store.toggle(task)
+                        }
                     }
                 }
             }
@@ -268,12 +264,17 @@ struct ContentView: View {
 private struct TaskRow: View {
     let task: TaskItem
     let serif: String
+    let onToggle: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Text(task.isComplete ? "✓" : "·")
-                .font(.custom(serif, size: 15))
-                .frame(width: 12)
+            Button(action: onToggle) {
+                Image(systemName: task.isComplete ? "checkmark.square" : "square")
+                    .font(.system(size: 13, weight: .regular))
+                    .frame(width: 14, height: 14)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
             Text(task.title.lowercased())
                 .font(.custom(serif, size: 16))
                 .strikethrough(task.isComplete)
