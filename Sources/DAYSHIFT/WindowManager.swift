@@ -11,6 +11,8 @@ final class WindowManager {
         self.window = window
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
+        window.titlebarSeparatorStyle = .none
+        window.toolbarStyle = .unified
         window.isOpaque = true
         window.backgroundColor = .white
 
