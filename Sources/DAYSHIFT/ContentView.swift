@@ -25,10 +25,10 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.system(size: 30, weight: .regular, design: .serif))
+                        .font(.system(size: 22, weight: .regular, design: .serif))
                     Spacer()
                     Text("\(visibleTasks.filter { !$0.isComplete }.count) open")
-                        .font(.system(size: 13, design: .serif))
+                        .font(.system(size: 11, design: .serif))
                         .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, 14)
@@ -37,7 +37,7 @@ struct ContentView: View {
 
                 if visibleTasks.isEmpty {
                     Text("Nothing scheduled.")
-                        .font(.system(size: 18, design: .serif))
+                        .font(.system(size: 15, design: .serif))
                         .foregroundStyle(.secondary)
                         .padding(.top, 28)
                 } else {
@@ -48,9 +48,9 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: 820, alignment: .leading)
-            .padding(.horizontal, 34)
-            .padding(.top, 34)
-            .padding(.bottom, 28)
+            .padding(.horizontal, 28)
+            .padding(.top, 26)
+            .padding(.bottom, 20)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
@@ -60,37 +60,36 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 TextField("Type anything…", text: $input)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 19, design: .serif))
+                    .font(.system(size: 16, design: .serif))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in feedback = nil }
 
                 Text("return ↵")
-                    .font(.system(size: 12, design: .serif))
+                    .font(.system(size: 10, design: .serif))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 15)
-            .frame(height: 52)
-            .overlay(Rectangle().stroke(Color.black, lineWidth: 1))
+            .padding(.horizontal, 2)
+            .frame(height: 34)
 
             if let feedback {
                 Text(feedback)
-                    .font(.system(size: 13, design: .serif))
+                    .font(.system(size: 11, design: .serif))
                     .foregroundStyle(Color.black)
                     .lineLimit(2)
             } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Text(interpreter.interpret(input).preview)
-                    .font(.system(size: 13, design: .serif))
+                    .font(.system(size: 11, design: .serif))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
             } else {
                 Text("Add, move, complete, rename, reprioritize, delete, or show a date.")
-                    .font(.system(size: 13, design: .serif))
+                    .font(.system(size: 11, design: .serif))
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 34)
-        .padding(.top, 14)
-        .padding(.bottom, 20)
+        .padding(.horizontal, 28)
+        .padding(.top, 10)
+        .padding(.bottom, 14)
         .frame(maxWidth: .infinity)
         .background(Color.white)
         .overlay(alignment: .top) { Divider().overlay(Color.black) }
@@ -164,22 +163,22 @@ private struct TaskRow: View {
     var body: some View {
         HStack(spacing: 14) {
             Image(systemName: task.isComplete ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 18, weight: .regular))
+                .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(Color.black)
                 .accessibilityHidden(true)
 
             Text(task.title)
-                .font(.system(size: 19, design: .serif))
+                .font(.system(size: 16, design: .serif))
                 .strikethrough(task.isComplete)
                 .foregroundStyle(task.isComplete ? .secondary : .primary)
 
             Spacer()
 
             Text(metadata)
-                .font(.system(size: 13, design: .serif))
+                .font(.system(size: 11, design: .serif))
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 16)
+        .padding(.vertical, 12)
     }
 
     private var metadata: String {
