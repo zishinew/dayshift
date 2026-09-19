@@ -5,15 +5,15 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleDisplayName</key>
-    <string>dayshift</string>
+    <string>Dayshift</string>
     <key>CFBundleExecutable</key>
-    <string>dayshift</string>
+    <string>Dayshift</string>
     <key>CFBundleIdentifier</key>
     <string>com.zishine.dayshift</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>dayshift</string>
+    <string>Dayshift</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
