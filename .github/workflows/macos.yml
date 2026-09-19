@@ -24,4 +24,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dayshift-macos
-          path: build/DAYSHIFT.app
+          path: build/dayshift.app

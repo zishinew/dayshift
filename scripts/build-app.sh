@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_dir="${0:A:h:h}"
-app_bundle="$project_dir/build/DAYSHIFT.app"
+app_bundle="$project_dir/build/dayshift.app"
 
 cd "$project_dir"
 swift build -c release --jobs 1

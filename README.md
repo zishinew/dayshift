@@ -15,7 +15,7 @@ dayshift is a native SwiftUI app with a full-screen todo list, a calendar view, 
 ```sh
 swift test --jobs 1
 ./scripts/build-app.sh
-open build/DAYSHIFT.app
+open build/dayshift.app
 ```
 
 The build script creates a signed local app bundle in `build/` and generates the `d.` app icon. Generated build products are ignored by git.
