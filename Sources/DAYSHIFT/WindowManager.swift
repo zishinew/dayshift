@@ -9,6 +9,7 @@ final class WindowManager {
 
     func attach(_ window: NSWindow) {
         self.window = window
+        window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
