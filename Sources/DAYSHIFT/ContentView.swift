@@ -1,98 +1,219 @@
 import SwiftUI
 
 struct ContentView: View {
+    private enum Page { case todo, calendar }
+
     @Environment(TaskStore.self) private var store
+    @State private var page: Page = .todo
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
+    @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var feedback: String?
+    @State private var compact = false
 
     private let interpreter = TaskCommandInterpreter()
+    private let serif = "Times New Roman"
 
-    private var visibleTasks: [TaskItem] { store.tasks(on: selectedDate) }
+    private var dayTasks: [TaskItem] { store.tasks(on: selectedDate) }
 
     var body: some View {
         VStack(spacing: 0) {
-            taskList
+            topToggle
+
+            if page == .todo {
+                todoPage
+            } else {
+                calendarPage
+            }
+
             commandBar
         }
         .background(Color.white)
         .foregroundStyle(Color.black)
         .preferredColorScheme(.light)
+        .background(WindowAccessor())
     }
 
-    private var taskList: some View {
+    private var topToggle: some View {
+        HStack {
+            Spacer()
+            HStack(spacing: 14) {
+                modeButton("todo", active: page == .todo) { page = .todo }
+                Text("/").foregroundStyle(.secondary)
+                modeButton("calendar", active: page == .calendar) { page = .calendar }
+            }
+            Spacer()
+
+            Button(compact ? "full" : "side") {
+                compact.toggle()
+                WindowManager.shared.setCompact(compact)
+            }
+            .font(.custom(serif, size: 11))
+            .buttonStyle(.plain)
+            .padding(.trailing, 24)
+            .accessibilityLabel(compact ? "make full screen" : "pin to side")
+        }
+        .padding(.top, 18)
+        .frame(height: 48)
+    }
+
+    private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(.custom(serif, size: 13))
+            .fontWeight(active ? .semibold : .regular)
+            .buttonStyle(.plain)
+            .opacity(active ? 1 : 0.5)
+    }
+
+    private var todoPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                        .font(.system(size: 22, weight: .regular, design: .serif))
+                    Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
+                        .font(.custom(serif, size: 22))
                     Spacer()
-                    Text("\(visibleTasks.filter { !$0.isComplete }.count) open")
-                        .font(.system(size: 11, design: .serif))
+                    Text("\(dayTasks.filter { !$0.isComplete }.count) open")
+                        .font(.custom(serif, size: 11))
                         .foregroundStyle(.secondary)
                 }
-                .padding(.bottom, 14)
+                .padding(.bottom, 22)
 
-                Divider().overlay(Color.black)
-
-                if visibleTasks.isEmpty {
-                    Text("Nothing scheduled.")
-                        .font(.system(size: 15, design: .serif))
+                if dayTasks.isEmpty {
+                    Text("nothing scheduled")
+                        .font(.custom(serif, size: 15))
                         .foregroundStyle(.secondary)
-                        .padding(.top, 28)
                 } else {
-                    ForEach(visibleTasks) { task in
-                        TaskRow(task: task)
-                        Divider()
+                    ForEach(dayTasks) { task in
+                        TaskRow(task: task, serif: serif)
                     }
                 }
             }
-            .frame(maxWidth: 820, alignment: .leading)
-            .padding(.horizontal, 28)
-            .padding(.top, 26)
-            .padding(.bottom, 20)
+            .frame(maxWidth: 720, alignment: .leading)
+            .padding(.horizontal, 38)
+            .padding(.top, 30)
+            .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
 
+    private var calendarPage: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                HStack {
+                    Button("←") { moveMonth(by: -1) }
+                    Spacer()
+                    Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
+                        .font(.custom(serif, size: 18))
+                    Spacer()
+                    Button("→") { moveMonth(by: 1) }
+                }
+                .font(.custom(serif, size: 15))
+                .buttonStyle(.plain)
+                .padding(.bottom, 24)
+
+                LazyVGrid(columns: calendarColumns, spacing: 0) {
+                    ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
+                        Text(weekday.lowercased())
+                            .font(.custom(serif, size: 11))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, 10)
+                    }
+                }
+
+                LazyVGrid(columns: calendarColumns, spacing: 18) {
+                    ForEach(monthDates, id: \.self) { date in calendarDay(date) }
+                }
+            }
+            .frame(maxWidth: 1040, alignment: .leading)
+            .padding(.horizontal, 38)
+            .padding(.top, 30)
+            .padding(.bottom, 24)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var calendarColumns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
+
+    private var weekdayLabels: [String] {
+        let symbols = Calendar.current.veryShortStandaloneWeekdaySymbols
+        let first = max(0, Calendar.current.firstWeekday - 1)
+        return Array(symbols[first...] + symbols[..<first])
+    }
+
+    private var monthDates: [Date] {
+        let calendar = Calendar.current
+        guard let month = calendar.dateInterval(of: .month, for: displayedMonth) else { return [] }
+        let weekday = calendar.component(.weekday, from: month.start)
+        let leading = (weekday - calendar.firstWeekday + 7) % 7
+        let start = calendar.date(byAdding: .day, value: -leading, to: month.start) ?? month.start
+        return (0..<42).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+    }
+
+    private func calendarDay(_ date: Date) -> some View {
+        let calendar = Calendar.current
+        let inMonth = calendar.isDate(date, equalTo: displayedMonth, toGranularity: .month)
+        let selected = calendar.isDate(date, inSameDayAs: selectedDate)
+        let tasks = store.tasks(on: date)
+
+        return Button {
+            selectedDate = date
+            page = .todo
+            if !inMonth { displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date }
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(date.formatted(.dateTime.day()))
+                    .font(.custom(serif, size: 13))
+                    .fontWeight(selected ? .semibold : .regular)
+                ForEach(tasks.prefix(2)) { task in
+                    Text(task.title.lowercased())
+                        .font(.custom(serif, size: 10))
+                        .lineLimit(1)
+                        .opacity(task.isComplete ? 0.45 : 0.85)
+                }
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Color.black)
+            .opacity(inMonth ? 1 : 0.25)
+            .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+            .overlay(alignment: .topLeading) {
+                if selected { Rectangle().frame(width: 18, height: 1).offset(y: -4) }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     private var commandBar: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 12) {
-                TextField("Type anything…", text: $input)
+                TextField("type anything…", text: $input)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 16, design: .serif))
+                    .font(.custom(serif, size: 15))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in feedback = nil }
-
                 Text("return ↵")
-                    .font(.system(size: 10, design: .serif))
+                    .font(.custom(serif, size: 10))
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 2)
-            .frame(height: 34)
+            .frame(height: 30)
 
             if let feedback {
-                Text(feedback)
-                    .font(.system(size: 11, design: .serif))
+                Text(feedback.lowercased())
+                    .font(.custom(serif, size: 10))
                     .foregroundStyle(Color.black)
                     .lineLimit(2)
             } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                Text(interpreter.interpret(input).preview)
-                    .font(.system(size: 11, design: .serif))
+                Text(interpreter.interpret(input).preview.lowercased())
+                    .font(.custom(serif, size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
-            } else {
-                Text("Add, move, complete, rename, reprioritize, delete, or show a date.")
-                    .font(.system(size: 11, design: .serif))
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding(.horizontal, 28)
+        .padding(.horizontal, 38)
         .padding(.top, 10)
-        .padding(.bottom, 14)
+        .padding(.bottom, 15)
         .frame(maxWidth: .infinity)
         .background(Color.white)
-        .overlay(alignment: .top) { Divider().overlay(Color.black) }
     }
 
     private func executeCommand() {
@@ -101,91 +222,59 @@ struct ContentView: View {
         let command = interpreter.interpret(value)
 
         switch command {
-        case .add(let task):
-            store.add(task)
-            selectedDate = Calendar.current.startOfDay(for: task.dueDate)
-            feedback = "Added “\(task.title)”."
-        case .complete(let query):
-            feedback = mutationFeedback(store.setCompletion(matching: query, to: true), verb: "Completed", query: query)
-        case .reopen(let query):
-            feedback = mutationFeedback(store.setCompletion(matching: query, to: false), verb: "Reopened", query: query)
-        case .delete(let query):
-            feedback = mutationFeedback(store.delete(matching: query), verb: "Deleted", query: query)
-        case .rename(let query, let title):
-            feedback = store.rename(matching: query, to: title).map { "Renamed task to “\($0)”." } ?? notFound(query)
-        case .setPriority(let query, let priority):
-            feedback = store.setPriority(matching: query, to: priority).map { "Set “\($0)” to \(priority.rawValue) priority." } ?? notFound(query)
-        case .reschedule(let query, let date):
-            feedback = store.reschedule(matching: query, to: date).map { "Moved “\($0)” to \(date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted))." } ?? notFound(query)
-        case .clearCompleted:
-            let count = store.clearCompleted()
-            feedback = count == 0 ? "No completed tasks to delete." : "Deleted \(count) completed \(count == 1 ? "task" : "tasks")."
-        case .showToday:
-            selectedDate = Calendar.current.startOfDay(for: Date())
-            feedback = "Showing today."
-        case .showDate(let date):
-            selectedDate = Calendar.current.startOfDay(for: date)
-            feedback = "Showing \(date.formatted(date: .long, time: .omitted))."
-        case .showCalendar:
-            feedback = "The calendar is command-based. Try “show next Tuesday” or “show October 4”."
-        case .nextMonth:
-            moveDate(by: 1, component: .month)
-            feedback = "Showing next month."
-        case .previousMonth:
-            moveDate(by: -1, component: .month)
-            feedback = "Showing previous month."
-        case .help:
-            feedback = "Try “complete the quiz”, “priority quiz high”, “move quiz to Friday”, “delete the quiz”, or “show next Tuesday”."
+        case .add(let task): store.add(task); selectedDate = Calendar.current.startOfDay(for: task.dueDate); page = .todo; feedback = "added “\(task.title)”."
+        case .complete(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: true), verb: "completed", query: query)
+        case .reopen(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: false), verb: "reopened", query: query)
+        case .delete(let query): feedback = mutationFeedback(store.delete(matching: query), verb: "deleted", query: query)
+        case .rename(let query, let title): feedback = store.rename(matching: query, to: title).map { "renamed task to “\($0)”." } ?? notFound(query)
+        case .setPriority(let query, let priority): feedback = store.setPriority(matching: query, to: priority).map { "set “\($0)” to \(priority.rawValue.lowercased()) priority." } ?? notFound(query)
+        case .reschedule(let query, let date): feedback = store.reschedule(matching: query, to: date).map { "moved “\($0)” to \(date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted))." } ?? notFound(query)
+        case .clearCompleted: let count = store.clearCompleted(); feedback = count == 0 ? "no completed tasks to delete." : "deleted \(count) completed tasks."
+        case .showToday: selectedDate = Calendar.current.startOfDay(for: Date()); page = .todo; feedback = "showing today."
+        case .showDate(let date): selectedDate = Calendar.current.startOfDay(for: date); displayedMonth = Calendar.current.dateInterval(of: .month, for: date)?.start ?? date; page = .todo; feedback = "showing \(date.formatted(date: .long, time: .omitted))."
+        case .showCalendar: page = .calendar; feedback = "showing calendar."
+        case .nextMonth: page = .calendar; moveMonth(by: 1); feedback = "showing next month."
+        case .previousMonth: page = .calendar; moveMonth(by: -1); feedback = "showing previous month."
+        case .help: feedback = "try “complete the quiz”, “priority quiz high”, “move quiz to friday”, or “show next tuesday”."
         }
-
         input = ""
     }
 
-    private func moveDate(by value: Int, component: Calendar.Component) {
-        selectedDate = Calendar.current.date(byAdding: component, value: value, to: selectedDate) ?? selectedDate
+    private func moveMonth(by amount: Int) {
+        let calendar = Calendar.current
+        guard let date = calendar.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
+        displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
     }
 
-    private func mutationFeedback(_ title: String?, verb: String, query: String) -> String {
-        title.map { "\(verb) “\($0)”." } ?? notFound(query)
-    }
-
-    private func notFound(_ query: String) -> String { "No task matches “\(query)”." }
-
-    private func hasTime(_ date: Date) -> Bool {
-        let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return parts.hour != 0 || parts.minute != 0
-    }
+    private func mutationFeedback(_ title: String?, verb: String, query: String) -> String { title.map { "\(verb) “\($0)”." } ?? notFound(query) }
+    private func notFound(_ query: String) -> String { "no task matches “\(query)”." }
+    private func hasTime(_ date: Date) -> Bool { let p = Calendar.current.dateComponents([.hour, .minute], from: date); return p.hour != 0 || p.minute != 0 }
 }
 
 private struct TaskRow: View {
     let task: TaskItem
+    let serif: String
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: task.isComplete ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(Color.black)
-                .accessibilityHidden(true)
-
-            Text(task.title)
-                .font(.system(size: 16, design: .serif))
+        HStack(spacing: 12) {
+            Text(task.isComplete ? "✓" : "·")
+                .font(.custom(serif, size: 15))
+                .frame(width: 12)
+            Text(task.title.lowercased())
+                .font(.custom(serif, size: 16))
                 .strikethrough(task.isComplete)
                 .foregroundStyle(task.isComplete ? .secondary : .primary)
-
             Spacer()
-
-            Text(metadata)
-                .font(.system(size: 11, design: .serif))
+            Text(metadata.lowercased())
+                .font(.custom(serif, size: 10))
                 .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 10)
     }
 
     private var metadata: String {
         let calendar = Calendar.current
-        let time = calendar.component(.hour, from: task.dueDate) == 0 && calendar.component(.minute, from: task.dueDate) == 0
-            ? "No time"
-            : task.dueDate.formatted(date: .omitted, time: .shortened)
+        let time = calendar.component(.hour, from: task.dueDate) == 0 && calendar.component(.minute, from: task.dueDate) == 0 ? "no time" : task.dueDate.formatted(date: .omitted, time: .shortened)
         return "\(time)  ·  \(task.priority.rawValue)"
     }
 }
