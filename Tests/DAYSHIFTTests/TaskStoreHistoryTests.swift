@@ -35,7 +35,9 @@ final class TaskStoreHistoryTests: XCTestCase {
         XCTAssertEqual(store.setCompletion(matching: "quiz", to: true), "Quiz")
         XCTAssertEqual(store.tasks.first?.isComplete, true)
 
-        try await Task.sleep(nanoseconds: 80_000_000)
+        for _ in 0..<100 where !store.tasks.isEmpty {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
         XCTAssertTrue(store.tasks.isEmpty)
 
         store.undo()
