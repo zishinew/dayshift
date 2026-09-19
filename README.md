@@ -39,6 +39,8 @@ i have classes math237, cs136, stat230
 
 Press `tab` when a school task has a suggested class. Completing a repeating task creates its next occurrence automatically.
 
+Use `command-z` to undo the last task or class change and `command-shift-z` to redo it. Completed tasks fade away after two seconds; undo still restores the task.
+
 ## data
 
 Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No account or network connection is required.
