@@ -20,17 +20,21 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                if page == .todo {
-                    todoPage
-                        .transition(.opacity)
-                } else {
-                    calendarPage
-                        .transition(.opacity)
+            HStack(spacing: 0) {
+                ZStack {
+                    if page == .todo {
+                        todoPage
+                            .transition(.opacity)
+                    } else {
+                        calendarPage
+                            .transition(.opacity)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .animation(motion, value: page)
+
+                classPanel
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(motion, value: page)
 
             commandBar
         }
@@ -50,6 +54,35 @@ struct ContentView: View {
             }
         }
         .background(WindowAccessor())
+    }
+
+    private var classPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("classes")
+                .font(.custom(serif, size: 13))
+                .fontWeight(.semibold)
+
+            if store.classes.isEmpty {
+                Text("none")
+                    .font(.custom(serif, size: 11))
+                    .foregroundStyle(.secondary)
+                    .transition(.opacity)
+            } else {
+                ForEach(store.classes.sorted { $0.code < $1.code }) { item in
+                    Text(item.code.lowercased())
+                        .font(.custom(serif, size: 12))
+                        .transition(.opacity.combined(with: .move(edge: .trailing)))
+                }
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(width: 150, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .padding(.top, 32)
+        .padding(.leading, 20)
+        .padding(.trailing, 38)
+        .animation(motion, value: store.classes)
     }
 
     private var topToggle: some View {
