@@ -253,9 +253,9 @@ struct ContentView: View {
                         withAnimation(motion) { feedback = nil }
                     }
                     .onKeyPress(.tab) {
-                        guard let suggestion = classSuggestion else { return .ignored }
+                        guard let completion = store.completedClassInput(for: input) else { return .ignored }
                         withAnimation(motion) {
-                            input = input.trimmingCharacters(in: .whitespacesAndNewlines) + " " + suggestion.code.lowercased()
+                            input = completion
                         }
                         return .handled
                     }

@@ -68,10 +68,30 @@ final class TaskStore {
 
     func suggestedClass(for input: String) -> ClassItem? {
         let query = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.range(of: #"(class|study|quiz|exam|homework|assignment|lab|lecture|math|essay)"#, options: .regularExpression) != nil else { return nil }
         guard !classes.contains(where: { query.contains($0.code.lowercased()) }) else { return nil }
         let tail = query.split(separator: " ").last.map(String.init) ?? query
-        return classes.first(where: { $0.code.lowercased().hasPrefix(tail) || $0.name.lowercased().contains(tail) }) ?? classes.first
+        if let prefixMatch = classes.first(where: { $0.code.lowercased().hasPrefix(tail) }) {
+            return prefixMatch
+        }
+        guard query.range(of: #"(class|study|quiz|exam|homework|assignment|lab|lecture|math|essay)"#, options: .regularExpression) != nil else { return nil }
+        return classes.first(where: { !$0.name.isEmpty && $0.name.lowercased().contains(tail) }) ?? classes.first
+    }
+
+    func completedClassInput(for input: String) -> String? {
+        guard let suggestion = suggestedClass(for: input) else { return nil }
+        let code = suggestion.code.lowercased()
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return code }
+
+        if let tokenRange = trimmed.range(of: #"[a-z0-9]+$"#, options: [.regularExpression, .caseInsensitive]) {
+            let token = trimmed[tokenRange].lowercased()
+            if code.hasPrefix(token) {
+                var completed = trimmed
+                completed.replaceSubrange(tokenRange, with: code)
+                return completed
+            }
+        }
+        return trimmed + " " + code
     }
 
     func toggle(_ task: TaskItem) {

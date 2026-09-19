@@ -28,6 +28,17 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testClassAutocompleteReplacesOnlyPartialClassToken() {
+        let store = makeStore()
+        store.addClasses(["MATH237", "CS136"])
+
+        XCTAssertEqual(store.completedClassInput(for: "ma"), "math237")
+        XCTAssertEqual(store.completedClassInput(for: "quiz ma"), "quiz math237")
+        XCTAssertEqual(store.completedClassInput(for: "quiz"), "quiz math237")
+        XCTAssertNil(store.completedClassInput(for: "dinner"))
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
