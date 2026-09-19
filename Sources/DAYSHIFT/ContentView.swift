@@ -240,7 +240,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 TextField("type anything…", text: $input)
                     .textFieldStyle(.plain)
-                    .font(.custom(serif, size: 15))
+                    .font(.custom(serif, size: 17))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in
                         withAnimation(motion) { feedback = nil }
@@ -256,7 +256,7 @@ struct ContentView: View {
                     .font(.custom(serif, size: 10))
                     .foregroundStyle(.secondary)
             }
-            .frame(height: 30)
+            .frame(height: 32)
 
             if let feedback {
                 Text(feedback.lowercased())
@@ -278,11 +278,17 @@ struct ContentView: View {
                         .lineLimit(2)
                         .transition(.opacity)
                 }
+            } else {
+                Text("try “quiz next wednesday” or “move quiz to friday”")
+                    .font(.custom(serif, size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, 38)
-        .padding(.top, 10)
-        .padding(.bottom, 15)
+        .padding(.top, 12)
+        .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
         .background(Color.white)
         .animation(motion, value: feedback)
