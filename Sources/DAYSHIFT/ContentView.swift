@@ -31,6 +31,7 @@ struct ContentView: View {
         .background(Color.white)
         .foregroundStyle(Color.black)
         .preferredColorScheme(.light)
+        .ignoresSafeArea(.container, edges: .top)
         .background(WindowAccessor())
     }
 
@@ -44,8 +45,8 @@ struct ContentView: View {
             }
             Spacer()
         }
-        .padding(.top, 18)
-        .frame(height: 48)
+        .padding(.top, 7)
+        .frame(height: 34)
     }
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
