@@ -125,11 +125,11 @@ struct ContentView: View {
                     ForEach(monthDates, id: \.self) { date in calendarDay(date) }
                 }
             }
-            .frame(maxWidth: 1040, alignment: .leading)
+            .frame(maxWidth: 1040, alignment: .center)
             .padding(.horizontal, 38)
             .padding(.top, 30)
             .padding(.bottom, 24)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
     }
 
