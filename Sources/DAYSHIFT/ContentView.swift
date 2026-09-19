@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct ContentView: View {
     private enum Page { case todo, calendar }
 
@@ -42,6 +43,7 @@ struct ContentView: View {
         .foregroundStyle(Color.black)
         .preferredColorScheme(.light)
         .toolbar {
+#if compiler(>=6.0)
             if #available(macOS 26.0, *) {
                 ToolbarItem(placement: .principal) {
                     topToggle
@@ -52,6 +54,11 @@ struct ContentView: View {
                     topToggle
                 }
             }
+#else
+            ToolbarItem(placement: .principal) {
+                topToggle
+            }
+#endif
         }
         .background(WindowAccessor())
     }

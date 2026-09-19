@@ -53,4 +53,6 @@ Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No
 - `Resources/Info.plist` — app bundle metadata
 
 Pull requests should keep the app dependency-free and preserve the `swift test --jobs 1` check. GitHub Actions runs that test and builds the app on every push and pull request to `main`.
+
+Run `./scripts/ci-check.sh` before pushing. It performs a clean Swift 5 compatibility test, builds the signed app bundle, and verifies its signature. This checkout uses the same check automatically as a pre-push hook.
 # dayshift
