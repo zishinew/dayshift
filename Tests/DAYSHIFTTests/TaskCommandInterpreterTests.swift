@@ -57,8 +57,15 @@ final class TaskCommandInterpreterTests: XCTestCase {
 
     func testAddClassCommand() {
         XCTAssertEqual(
-            TaskCommandInterpreter().interpret("add class math237 calculus", now: now),
-            .addClass(code: "MATH237", name: "calculus")
+            TaskCommandInterpreter().interpret("add class math237", now: now),
+            .addClasses(["MATH237"])
+        )
+    }
+
+    func testAddMultipleClassesCommand() {
+        XCTAssertEqual(
+            TaskCommandInterpreter().interpret("i have classes math237, cs136 and stat230", now: now),
+            .addClasses(["MATH237", "CS136", "STAT230"])
         )
     }
 

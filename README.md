@@ -33,7 +33,8 @@ add quiz next week
 add a repeating quiz every 2 weeks
 repeat quiz every monday
 remove quiz
-add class linear algebra
+add class math237
+i have classes math237, cs136, stat230
 ```
 
 Press `tab` when a school task has a suggested class. Completing a repeating task creates its next occurrence automatically.

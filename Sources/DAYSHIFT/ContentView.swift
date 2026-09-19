@@ -235,7 +235,7 @@ struct ContentView: View {
 
         switch command {
         case .add(let task): store.add(task); selectedDate = Calendar.current.startOfDay(for: task.dueDate); page = .todo; feedback = "added “\(task.title)”."
-        case .addClass(let code, let name): store.addClass(code: code, name: name); feedback = "saved class \(code.lowercased())."
+        case .addClasses(let codes): store.addClasses(codes); feedback = "saved \(codes.map { $0.lowercased() }.joined(separator: ", "))."
         case .repeatTask(let query, let rule): feedback = store.setRepeat(matching: query, to: rule).map { "\($0.lowercased()) will repeat \(rule.label)." } ?? notFound(query)
         case .complete(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: true), verb: "completed", query: query)
         case .reopen(let query): feedback = mutationFeedback(store.setCompletion(matching: query, to: false), verb: "reopened", query: query)

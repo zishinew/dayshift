@@ -37,6 +37,12 @@ final class TaskStore {
         saveClasses()
     }
 
+    func addClasses(_ codes: [String]) {
+        for code in codes {
+            addClass(code: code, name: "")
+        }
+    }
+
     func suggestedClass(for input: String) -> ClassItem? {
         let query = input.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard query.range(of: #"(class|study|quiz|exam|homework|assignment|lab|lecture|math|essay)"#, options: .regularExpression) != nil else { return nil }

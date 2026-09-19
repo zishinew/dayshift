@@ -2,7 +2,7 @@ import Foundation
 
 enum TaskCommand: Equatable {
     case add(ParsedTask)
-    case addClass(code: String, name: String)
+    case addClasses([String])
     case repeatTask(query: String, rule: RepeatRule)
     case complete(String)
     case reopen(String)
@@ -22,7 +22,7 @@ enum TaskCommand: Equatable {
         switch self {
         case .add(let task):
             "Add “\(task.title)” · \(task.dueDate.formatted(date: .abbreviated, time: hasTime(task.dueDate) ? .shortened : .omitted)) · \(task.priority.rawValue)\(task.repeatRule.map { " · \($0.label)" } ?? "")"
-        case .addClass(let code, let name): "Add class \(code)\(name.isEmpty ? "" : " · \(name)")"
+        case .addClasses(let codes): "Add \(codes.map { $0.lowercased() }.joined(separator: ", "))"
         case .repeatTask(let query, let rule): "Repeat “\(query)” \(rule.label)"
         case .complete(let query): "Complete “\(query)”"
         case .reopen(let query): "Reopen “\(query)”"
@@ -68,8 +68,9 @@ struct TaskCommandInterpreter {
         default: break
         }
 
-        if let groups = captures(#"^(?:add\s+)?class\s+([a-z]{2,8}\s?\d{2,4})(?:\s*(?:=|:|-|,)\s*|\s+)(.*)$"#, in: value) {
-            return .addClass(code: groups[0].replacingOccurrences(of: " ", with: "").uppercased(), name: groups[1])
+        if lower.range(of: #"^(?:add\s+class(?:es)?|i\s+have\s+class(?:es)?|my\s+classes\s+are)\b"#, options: .regularExpression) != nil {
+            let codes = classCodes(in: value)
+            if !codes.isEmpty { return .addClasses(codes) }
         }
 
         if let groups = captures(#"^repeat\s+(.+?)\s+every\s+(?:(\d+)\s+)?(day|days|week|weeks|month|months|weekday|weekdays)$"#, in: value) {
@@ -161,6 +162,17 @@ struct TaskCommandInterpreter {
         return (1..<match.numberOfRanges).compactMap { index in
             guard let range = Range(match.range(at: index), in: value) else { return nil }
             return String(value[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    private func classCodes(in value: String) -> [String] {
+        guard let regex = try? NSRegularExpression(pattern: #"\b[a-z]{2,8}\s?\d{2,4}[a-z]?\b"#, options: [.caseInsensitive]) else { return [] }
+        let matches = regex.matches(in: value, range: NSRange(value.startIndex..., in: value))
+        var seen = Set<String>()
+        return matches.compactMap { match in
+            guard let range = Range(match.range, in: value) else { return nil }
+            let code = value[range].replacingOccurrences(of: " ", with: "").uppercased()
+            return seen.insert(code).inserted ? code : nil
         }
     }
 }
