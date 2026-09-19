@@ -18,8 +18,6 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            topToggle
-
             if page == .todo {
                 todoPage
             } else {
@@ -31,7 +29,18 @@ struct ContentView: View {
         .background(Color.white)
         .foregroundStyle(Color.black)
         .preferredColorScheme(.light)
-        .ignoresSafeArea(.container, edges: .top)
+        .toolbar {
+            if #available(macOS 26.0, *) {
+                ToolbarItem(placement: .principal) {
+                    topToggle
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .principal) {
+                    topToggle
+                }
+            }
+        }
         .background(WindowAccessor())
     }
 
@@ -45,8 +54,7 @@ struct ContentView: View {
             }
             Spacer()
         }
-        .padding(.top, 7)
-        .frame(height: 34)
+        .frame(width: 190, height: 28)
     }
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {

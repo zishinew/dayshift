@@ -13,7 +13,8 @@ final class WindowManager {
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.titlebarSeparatorStyle = .none
-        window.toolbar = nil
+        window.toolbarStyle = .unifiedCompact
+        window.toolbar?.showsBaselineSeparator = false
         window.isOpaque = true
         window.backgroundColor = .white
 
