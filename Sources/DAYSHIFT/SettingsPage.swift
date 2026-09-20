@@ -1,22 +1,9 @@
+import AppKit
 import SwiftUI
 
 @MainActor
 struct SettingsPage: View {
     @Environment(AppearanceSettings.self) private var appearance
-    private let textPalette = [
-        AppearanceSwatch("black", .black),
-        AppearanceSwatch("charcoal", Color(white: 0.2)),
-        AppearanceSwatch("gray", Color(white: 0.48)),
-        AppearanceSwatch("white", .white)
-    ]
-    private let backgroundPalette = [
-        AppearanceSwatch("white", .white),
-        AppearanceSwatch("paper", Color(white: 0.96)),
-        AppearanceSwatch("gray", Color(white: 0.86)),
-        AppearanceSwatch("graphite", Color(white: 0.13)),
-        AppearanceSwatch("black", .black)
-    ]
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -25,8 +12,8 @@ struct SettingsPage: View {
                     .padding(.bottom, 30)
 
                 settingSection("appearance") {
-                    colorRow("text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }), palette: textPalette)
-                    colorRow("background", color: Binding(get: { appearance.backgroundColor }, set: { appearance.backgroundColor = $0 }), palette: backgroundPalette)
+                    ThemedColorPickerRow(title: "text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
+                    ThemedColorPickerRow(title: "background", color: Binding(get: { appearance.backgroundColor }, set: { appearance.backgroundColor = $0 }), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
                     fontRow
                     sliderRow("text size", value: Binding(get: { appearance.textSize }, set: { appearance.textSize = $0 }), range: 14...25, valueLabel: "\(Int(appearance.textSize))")
                     sliderRow("row spacing", value: Binding(get: { appearance.rowSpacing }, set: { appearance.rowSpacing = $0 }), range: 4...18, valueLabel: "\(Int(appearance.rowSpacing))")
@@ -67,27 +54,6 @@ struct SettingsPage: View {
         .padding(.bottom, 30)
     }
 
-    private func colorRow(_ title: String, color: Binding<Color>, palette: [AppearanceSwatch]) -> some View {
-        HStack {
-            Text(title)
-                .font(.custom(appearance.fontName, size: appearance.scaled(16)))
-            Spacer()
-            HStack(spacing: 9) {
-                ForEach(palette) { swatch in
-                    PaletteSwatchButton(
-                        swatch: swatch,
-                        selected: appearance.matches(color.wrappedValue, swatch.color),
-                        borderColor: appearance.textColor
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.14)) {
-                            color.wrappedValue = swatch.color
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private var fontRow: some View {
         HStack {
             Text("font")
@@ -125,40 +91,146 @@ struct SettingsPage: View {
     }
 }
 
-private struct AppearanceSwatch: Identifiable {
-    let name: String
-    let color: Color
-    var id: String { name }
-
-    init(_ name: String, _ color: Color) {
-        self.name = name
-        self.color = color
-    }
-}
-
-private struct PaletteSwatchButton: View {
-    let swatch: AppearanceSwatch
-    let selected: Bool
+private struct ThemedColorPickerRow: View {
+    let title: String
+    @Binding var color: Color
+    let fontName: String
+    let fontSize: CGFloat
     let borderColor: Color
-    let action: () -> Void
+    @State private var isExpanded = false
     @State private var isHovered = false
 
     var body: some View {
-        Button(action: action) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(swatch.color)
-                .frame(width: 16, height: 16)
-                .overlay {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(title)
+                    .font(.custom(fontName, size: fontSize))
+                Spacer()
+                Button {
+                    withAnimation(.easeInOut(duration: 0.16)) { isExpanded.toggle() }
+                } label: {
                     RoundedRectangle(cornerRadius: 2)
-                        .stroke(borderColor.opacity(selected ? 1 : 0.28), lineWidth: selected ? 2 : 1)
+                        .fill(color)
+                        .frame(width: 17, height: 17)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(borderColor.opacity(0.6), lineWidth: 1)
+                        }
+                        .scaleEffect(isHovered ? 1.12 : 1)
                 }
-                .scaleEffect(isHovered ? 1.12 : 1)
+                .buttonStyle(.plain)
+                .help("choose \(title) color")
+                .accessibilityLabel("Choose \(title) color")
+                .animation(.easeOut(duration: 0.12), value: isHovered)
+                .onHover { isHovered = $0 }
+            }
+
+            if isExpanded {
+                ColorWheelPicker(color: $color, borderColor: borderColor, fontName: fontName)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topTrailing)))
+            }
         }
-        .buttonStyle(.plain)
-        .help(swatch.name)
-        .accessibilityLabel(swatch.name)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-        .animation(.easeOut(duration: 0.12), value: isHovered)
-        .onHover { isHovered = $0 }
+    }
+}
+
+private struct ColorWheelPicker: View {
+    @Binding var color: Color
+    let borderColor: Color
+    let fontName: String
+    @State private var hue: Double
+    @State private var saturation: Double
+    @State private var brightness: Double
+
+    init(color: Binding<Color>, borderColor: Color, fontName: String) {
+        _color = color
+        self.borderColor = borderColor
+        self.fontName = fontName
+        let nsColor = NSColor(color.wrappedValue).usingColorSpace(.deviceRGB) ?? .black
+        var hue: CGFloat = 0
+        var saturation: CGFloat = 0
+        var brightness: CGFloat = 0
+        nsColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: nil)
+        _hue = State(initialValue: Double(hue))
+        _saturation = State(initialValue: Double(saturation))
+        _brightness = State(initialValue: Double(brightness))
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            GeometryReader { proxy in
+                let size = min(proxy.size.width, proxy.size.height)
+                let radius = size / 2
+                let selection = CGPoint(
+                    x: radius + cos(hue * .pi * 2) * saturation * radius,
+                    y: radius + sin(hue * .pi * 2) * saturation * radius
+                )
+
+                Canvas { context, _ in
+                    let center = CGPoint(x: radius, y: radius)
+                    for step in 0..<360 {
+                        var wedge = Path()
+                        wedge.move(to: center)
+                        wedge.addArc(
+                            center: center,
+                            radius: radius,
+                            startAngle: .degrees(Double(step)),
+                            endAngle: .degrees(Double(step + 1)),
+                            clockwise: false
+                        )
+                        wedge.closeSubpath()
+                        context.fill(wedge, with: .color(Color(hue: Double(step) / 360, saturation: 1, brightness: 1)))
+                    }
+                }
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+                .overlay {
+                    RadialGradient(colors: [.white, .clear], center: .center, startRadius: 0, endRadius: radius)
+                        .clipShape(Circle())
+                }
+                .overlay {
+                    Circle()
+                        .stroke(borderColor.opacity(0.36), lineWidth: 1)
+                }
+                .overlay {
+                    Circle()
+                        .stroke(borderColor, lineWidth: 1.5)
+                        .frame(width: 10, height: 10)
+                        .position(selection)
+                }
+                .contentShape(Circle())
+                .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                    updateColor(at: value.location, radius: radius)
+                })
+            }
+            .frame(width: 112, height: 112)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("brightness")
+                    .font(.custom(fontName, size: 12))
+                    .foregroundStyle(borderColor.opacity(0.62))
+                Slider(value: Binding(
+                    get: { brightness },
+                    set: { brightness = $0; updateSelectedColor() }
+                ), in: 0...1)
+                .tint(Color(hue: hue, saturation: saturation, brightness: max(brightness, 0.1)))
+                Text("drag the wheel")
+                    .font(.custom(fontName, size: 11))
+                    .foregroundStyle(borderColor.opacity(0.52))
+            }
+            .frame(width: 118, alignment: .leading)
+        }
+        .padding(.top, 1)
+    }
+
+    private func updateColor(at location: CGPoint, radius: CGFloat) {
+        let x = location.x - radius
+        let y = location.y - radius
+        hue = (atan2(y, x) + .pi * 2).truncatingRemainder(dividingBy: .pi * 2) / (.pi * 2)
+        saturation = min(1, sqrt(x * x + y * y) / radius)
+        updateSelectedColor()
+    }
+
+    private func updateSelectedColor() {
+        color = Color(hue: hue, saturation: saturation, brightness: brightness)
     }
 }

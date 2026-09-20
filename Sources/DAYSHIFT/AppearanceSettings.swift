@@ -37,15 +37,6 @@ final class AppearanceSettings {
         showCommandHints = true
     }
 
-    func matches(_ lhs: Color, _ rhs: Color) -> Bool {
-        let left = NSColor(lhs).usingColorSpace(.deviceRGB) ?? .black
-        let right = NSColor(rhs).usingColorSpace(.deviceRGB) ?? .black
-        return abs(left.redComponent - right.redComponent) < 0.01
-            && abs(left.greenComponent - right.greenComponent) < 0.01
-            && abs(left.blueComponent - right.blueComponent) < 0.01
-            && abs(left.alphaComponent - right.alphaComponent) < 0.01
-    }
-
     private func save() {
         let defaults = UserDefaults.standard
         defaults.set(fontName, forKey: "fontName")
