@@ -158,9 +158,13 @@ struct ContentView: View {
                         .transition(.opacity)
                 } else {
                     ForEach(todayTasks) { task in
-                        TaskRow(task: task, serif: serif, showsDueDate: false) {
-                            withAnimation(motion) { store.toggle(task) }
-                        }
+                        TaskRow(
+                            task: task,
+                            serif: serif,
+                            showsDueDate: false,
+                            onToggle: { withAnimation(motion) { store.toggle(task) } },
+                            onRename: { _ = store.rename(task, to: $0) }
+                        )
                         .transition(.opacity)
                     }
                 }
@@ -177,9 +181,13 @@ struct ContentView: View {
                         .transition(.opacity)
                 } else {
                     ForEach(futureTasks) { task in
-                        TaskRow(task: task, serif: serif, showsDueDate: true) {
-                            withAnimation(motion) { store.toggle(task) }
-                        }
+                        TaskRow(
+                            task: task,
+                            serif: serif,
+                            showsDueDate: true,
+                            onToggle: { withAnimation(motion) { store.toggle(task) } },
+                            onRename: { _ = store.rename(task, to: $0) }
+                        )
                         .transition(.opacity)
                     }
                 }
@@ -408,6 +416,11 @@ private struct TaskRow: View {
     let serif: String
     let showsDueDate: Bool
     let onToggle: () -> Void
+    let onRename: (String) -> Void
+
+    @State private var isEditingTitle = false
+    @State private var titleDraft = ""
+    @FocusState private var titleIsFocused: Bool
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -422,10 +435,30 @@ private struct TaskRow: View {
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(task.title.lowercased())
-                    .font(.custom(serif, size: 18))
-                    .strikethrough(task.isComplete)
-                    .foregroundStyle(task.isComplete ? .secondary : .primary)
+                if isEditingTitle {
+                    TextField("task title", text: $titleDraft)
+                        .textFieldStyle(.plain)
+                        .font(.custom(serif, size: 18))
+                        .focused($titleIsFocused)
+                        .onSubmit(commitTitle)
+                        .onKeyPress(.escape) {
+                            cancelEditing()
+                            return .handled
+                        }
+                        .onChange(of: titleIsFocused) { _, focused in
+                            if !focused { commitTitle() }
+                        }
+                        .transition(.opacity)
+                } else {
+                    Text(task.title.lowercased())
+                        .font(.custom(serif, size: 18))
+                        .strikethrough(task.isComplete)
+                        .foregroundStyle(task.isComplete ? .secondary : .primary)
+                        .contentShape(Rectangle())
+                        .onTapGesture(perform: beginEditing)
+                        .help("click to rename")
+                        .transition(.opacity)
+                }
 
                 Text(metadata.lowercased())
                     .font(.custom(serif, size: 13))
@@ -435,6 +468,28 @@ private struct TaskRow: View {
             Spacer()
         }
         .padding(.vertical, 9)
+    }
+
+    private func beginEditing() {
+        titleDraft = task.title
+        isEditingTitle = true
+        titleIsFocused = true
+    }
+
+    private func commitTitle() {
+        guard isEditingTitle else { return }
+        let title = titleDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        isEditingTitle = false
+        titleIsFocused = false
+        if !title.isEmpty, title != task.title {
+            onRename(title)
+        }
+    }
+
+    private func cancelEditing() {
+        titleDraft = task.title
+        isEditingTitle = false
+        titleIsFocused = false
     }
 
     private var metadata: String {

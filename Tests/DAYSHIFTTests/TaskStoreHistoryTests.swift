@@ -103,6 +103,21 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testInlineRenameTargetsTheClickedTask() {
+        let store = makeStore()
+        store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: "MATH237", repeatRule: nil))
+        store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: "STAT230", repeatRule: nil))
+        let mathQuiz = store.tasks.first { $0.classCode == "MATH237" }!
+
+        XCTAssertEqual(store.rename(mathQuiz, to: "Calculus quiz"), "Calculus quiz")
+        XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.title, "Calculus quiz")
+        XCTAssertEqual(store.tasks.first { $0.classCode == "STAT230" }?.title, "Quiz")
+
+        store.undo()
+        XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.title, "Quiz")
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))

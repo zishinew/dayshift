@@ -135,7 +135,18 @@ final class TaskStore {
     @discardableResult
     func rename(matching query: String, to title: String) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return rename(at: index, to: title)
+    }
+
+    @discardableResult
+    func rename(_ task: TaskItem, to title: String) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return rename(at: index, to: title)
+    }
+
+    private func rename(at index: Int, to title: String) -> String? {
         let cleanTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanTitle.isEmpty else { return nil }
         guard tasks[index].title != cleanTitle else { return tasks[index].title }
         recordMutation()
         tasks[index].title = cleanTitle
