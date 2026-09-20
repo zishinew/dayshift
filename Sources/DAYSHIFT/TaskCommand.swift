@@ -11,6 +11,11 @@ enum TaskCommand: Equatable {
     case rename(query: String, title: String)
     case setPriority(query: String, priority: TaskPriority)
     case reschedule(query: String, date: Date)
+    case shiftDate(query: String, amount: Int, unit: RepeatUnit)
+    case setTime(query: String, hour: Int, minute: Int)
+    case clearTime(String)
+    case setClass(query: String, code: String)
+    case clearClass(String)
     case clearCompleted
     case showToday
     case showCalendar
@@ -33,6 +38,12 @@ enum TaskCommand: Equatable {
         case .setPriority(let query, let priority): "Set “\(query)” to \(priority.rawValue) priority"
         case .reschedule(let query, let date):
             "Move “\(query)” to \(date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted))"
+        case .shiftDate(let query, let amount, let unit):
+            "Move “\(query)” \(abs(amount)) \(unit.rawValue)\(abs(amount) == 1 ? "" : "s") \(amount < 0 ? "earlier" : "later")"
+        case .setTime(let query, let hour, let minute): "Set “\(query)” to \(formattedTime(hour: hour, minute: minute))"
+        case .clearTime(let query): "Remove the time from “\(query)”"
+        case .setClass(let query, let code): "Set “\(query)” to \(code.lowercased())"
+        case .clearClass(let query): "Remove the class from “\(query)”"
         case .clearCompleted: "Delete all completed tasks"
         case .showToday: "Show today"
         case .showCalendar: "Show calendar"
@@ -46,6 +57,11 @@ enum TaskCommand: Equatable {
     private func hasTime(_ date: Date) -> Bool {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: date)
         return parts.hour != 0 || parts.minute != 0
+    }
+
+    private func formattedTime(hour: Int, minute: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
     }
 }
 
@@ -96,12 +112,72 @@ struct TaskCommandInterpreter {
             return repeatCommand
         }
 
+        if let groups = captures(#"^(?:remove|clear|delete)\s+(?:the\s+)?time\s+(?:from|for|of)\s+(.+)$"#, in: value) {
+            return .clearTime(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^make\s+(.+?)\s+(?:an?\s+)?all[ -]?day(?:\s+task)?$"#, in: value) {
+            return .clearTime(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^(?:set|change|update)\s+(?:the\s+)?time\s+(?:of|for)\s+(.+?)\s+(?:to|at)\s+(.+)$"#, in: value),
+           let time = taskParser.timeComponents(in: groups[1]) {
+            return .setTime(query: cleanTarget(groups[0]), hour: time.hour, minute: time.minute)
+        }
+
+        if let groups = captures(#"^(?:set|change|update)\s+(.+?)\s+time\s+(?:to|at)\s+(.+)$"#, in: value),
+           let time = taskParser.timeComponents(in: groups[1]) {
+            return .setTime(query: cleanTarget(groups[0]), hour: time.hour, minute: time.minute)
+        }
+
+        if let groups = captures(#"^(?:move|put)\s+(.+?)\s+(?:to|at)\s+(.+)$"#, in: value),
+           isTimeOnly(groups[1]), let time = taskParser.timeComponents(in: groups[1]) {
+            return .setTime(query: cleanTarget(groups[0]), hour: time.hour, minute: time.minute)
+        }
+
+        if let groups = captures(#"^(?:remove|clear|unassign)\s+(?:the\s+)?class\s+(?:from|for|of)\s+(.+)$"#, in: value) {
+            return .clearClass(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^make\s+(.+?)\s+(?:have\s+)?no\s+class$"#, in: value) {
+            return .clearClass(cleanTarget(groups[0]))
+        }
+
+        let classPatterns = [
+            #"^(?:set|change|update)\s+(?:the\s+)?class\s+(?:of|for)\s+(.+?)\s+to\s+([a-z]{2,8}\s?\d{2,4}[a-z]?)$"#,
+            #"^(?:set|change|update)\s+(.+?)\s+class\s+to\s+([a-z]{2,8}\s?\d{2,4}[a-z]?)$"#,
+            #"^assign\s+(.+?)\s+to\s+(?:class\s+)?([a-z]{2,8}\s?\d{2,4}[a-z]?)$"#,
+            #"^make\s+(.+?)\s+(?:a\s+)?([a-z]{2,8}\s?\d{2,4}[a-z]?)\s+task$"#
+        ]
+        for pattern in classPatterns {
+            if let groups = captures(pattern, in: value) {
+                let code = groups[1].replacingOccurrences(of: " ", with: "").uppercased()
+                return .setClass(query: cleanTarget(groups[0]), code: code)
+            }
+        }
+
+        if let groups = captures(#"^(?:push|move)\s+(.+?)\s+(back|later|forward|earlier)\s+(?:by\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(day|week|month)s?$"#, in: value),
+           let amount = quantity(groups[2]) {
+            let direction = groups[1].lowercased() == "earlier" ? -1 : 1
+            return .shiftDate(query: cleanTarget(groups[0]), amount: direction * amount, unit: repeatUnit(groups[3]))
+        }
+
+        if let groups = captures(#"^bring\s+(.+?)\s+(?:forward|earlier)\s+(?:by\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(day|week|month)s?$"#, in: value),
+           let amount = quantity(groups[1]) {
+            return .shiftDate(query: cleanTarget(groups[0]), amount: -amount, unit: repeatUnit(groups[2]))
+        }
+
+        if let groups = captures(#"^(?:delay|postpone|defer)\s+(.+?)\s+(?:by\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|a|an)\s+(day|week|month)s?$"#, in: value),
+           let amount = quantity(groups[1]) {
+            return .shiftDate(query: cleanTarget(groups[0]), amount: amount, unit: repeatUnit(groups[2]))
+        }
+
         if let groups = captures(#"^(?:set\s+)?(?:the\s+)?priority\s+(?:of|for)\s+(.+?)\s+(?:to\s+)?(high|medium|low)$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
             return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
-        if let groups = captures(#"^(?:set\s+)?(.+?)\s+priority\s+(?:to\s+)?(high|medium|low)$"#, in: value),
+        if let groups = captures(#"^(?:(?:set|change|update)\s+)?(.+?)\s+priority\s+(?:to\s+|as\s+)?(high|medium|low)$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
             return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
@@ -113,6 +189,16 @@ struct TaskCommandInterpreter {
 
         if let groups = captures(#"^make\s+(.+?)\s+(?:a\s+)?(high|medium|low)(?:\s+priority)?$"#, in: value),
            let priority = TaskPriority(rawValue: groups[1].capitalized) {
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
+        }
+
+        if let groups = captures(#"^(?:set|change|update|mark)\s+(.+?)(?:'s)?\s+priority\s+(?:to|as)\s+(high|medium|low)$"#, in: value),
+           let priority = TaskPriority(rawValue: groups[1].capitalized) {
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
+        }
+
+        if let groups = captures(#"^make\s+(.+?)\s+(more\s+important|urgent|top\s+priority|less\s+important|not\s+urgent)$"#, in: value) {
+            let priority: TaskPriority = groups[1].lowercased().contains("less") || groups[1].lowercased().contains("not") ? .low : .high
             return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
@@ -130,7 +216,15 @@ struct TaskCommandInterpreter {
             return .setPriority(query: cleanTarget(groups[1]), priority: priority)
         }
 
-        if let groups = captures(#"^(?:rename|change\s+name\s+of)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:rename|change\s+(?:the\s+)?(?:name|title)\s+of|update\s+(?:the\s+)?(?:name|title)\s+of)\s+(.+?)\s+(?:to|as)\s+(.+)$"#, in: value) {
+            return .rename(query: cleanTarget(groups[0]), title: groups[1])
+        }
+
+        if let groups = captures(#"^(?:change|update)\s+(.+?)(?:'s)?\s+(?:name|title)\s+(?:to|as)\s+(.+)$"#, in: value) {
+            return .rename(query: cleanTarget(groups[0]), title: groups[1])
+        }
+
+        if let groups = captures(#"^call\s+(.+?)\s+(.+)$"#, in: value) {
             return .rename(query: cleanTarget(groups[0]), title: groups[1])
         }
 
@@ -147,6 +241,10 @@ struct TaskCommandInterpreter {
         }
 
         if let groups = captures(#"^(?:change|set)\s+(.+?)\s+(?:due\s+)?date\s+to\s+(.+)$"#, in: value) {
+            return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
+        }
+
+        if let groups = captures(#"^(.+?)\s+(?:is|will\s+be|should\s+be|needs?\s+to\s+be)\s+due\s+(?:on|by|for)?\s*(.+)$"#, in: value) {
             return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
@@ -216,6 +314,23 @@ struct TaskCommandInterpreter {
         value = replacing(#"^\s*i\s+want\s+(?:you\s+)?to\s+"#, in: value)
         value = replacing(#"\s*[,!.?]?\s+please\s*[!.?]*\s*$"#, in: value)
         return value.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+    }
+
+    private func isTimeOnly(_ value: String) -> Bool {
+        value.range(of: #"^\s*(?:(?:at|by|around)\s+)?(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|(?:[01]?\d|2[0-3]):[0-5]\d|noon|midnight)\s*$"#, options: [.regularExpression, .caseInsensitive]) != nil
+    }
+
+    private func quantity(_ value: String) -> Int? {
+        if let number = Int(value) { return max(1, number) }
+        if ["a", "an"].contains(value.lowercased()) { return 1 }
+        return [
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+            "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12
+        ][value.lowercased()]
+    }
+
+    private func repeatUnit(_ value: String) -> RepeatUnit {
+        value.lowercased().hasPrefix("day") ? .day : value.lowercased().hasPrefix("week") ? .week : .month
     }
 
     private func repeatCommand(in value: String) -> TaskCommand? {

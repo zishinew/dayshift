@@ -73,6 +73,36 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testEveryTaskDetailCanBeEditedAndUndone() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let original = ISO8601DateFormatter().date(from: "2026-09-22T00:00:00Z")!
+        let store = makeStore()
+        store.add(ParsedTask(title: "Quiz", dueDate: original, priority: .medium, classCode: nil, repeatRule: nil))
+
+        XCTAssertEqual(store.rename(matching: "quiz", to: "Math237 quiz"), "Math237 quiz")
+        XCTAssertEqual(store.setPriority(matching: "math237 quiz", to: .high), "Math237 quiz")
+        XCTAssertEqual(store.setClass(matching: "math237 quiz", to: "MATH237"), "Math237 quiz")
+        XCTAssertEqual(store.setTime(matching: "math237 quiz", hour: 16, minute: 30, calendar: calendar), "Math237 quiz")
+        XCTAssertEqual(store.shiftDate(matching: "math237 quiz", amount: 2, unit: .day, calendar: calendar), "Math237 quiz")
+
+        XCTAssertEqual(store.tasks.first?.priority, .high)
+        XCTAssertEqual(store.tasks.first?.classCode, "MATH237")
+        XCTAssertEqual(calendar.component(.day, from: store.tasks.first!.dueDate), 24)
+        XCTAssertEqual(calendar.component(.hour, from: store.tasks.first!.dueDate), 16)
+        XCTAssertEqual(calendar.component(.minute, from: store.tasks.first!.dueDate), 30)
+        XCTAssertTrue(store.classes.contains { $0.code == "MATH237" })
+
+        XCTAssertEqual(store.clearTime(matching: "math237 quiz", calendar: calendar), "Math237 quiz")
+        XCTAssertEqual(store.clearClass(matching: "math237 quiz"), "Math237 quiz")
+        XCTAssertEqual(calendar.component(.hour, from: store.tasks.first!.dueDate), 0)
+        XCTAssertNil(store.tasks.first?.classCode)
+
+        store.undo()
+        XCTAssertEqual(store.tasks.first?.classCode, "MATH237")
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))

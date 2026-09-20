@@ -369,13 +369,18 @@ struct ContentView: View {
             case .rename(let query, let title): feedback = store.rename(matching: query, to: title).map { "renamed task to “\($0)”." } ?? notFound(query)
             case .setPriority(let query, let priority): feedback = store.setPriority(matching: query, to: priority).map { "set “\($0)” to \(priority.rawValue.lowercased()) priority." } ?? notFound(query)
             case .reschedule(let query, let date): feedback = store.reschedule(matching: query, to: date).map { "moved “\($0)” to \(date.formatted(date: .abbreviated, time: hasTime(date) ? .shortened : .omitted))." } ?? notFound(query)
+            case .shiftDate(let query, let amount, let unit): feedback = store.shiftDate(matching: query, amount: amount, unit: unit).map { "moved “\($0)” \(abs(amount)) \(unit.rawValue)\(abs(amount) == 1 ? "" : "s") \(amount < 0 ? "earlier" : "later")." } ?? notFound(query)
+            case .setTime(let query, let hour, let minute): feedback = store.setTime(matching: query, hour: hour, minute: minute).map { "set “\($0)” to \(formattedTime(hour: hour, minute: minute))." } ?? notFound(query)
+            case .clearTime(let query): feedback = store.clearTime(matching: query).map { "removed the time from “\($0)”." } ?? notFound(query)
+            case .setClass(let query, let code): feedback = store.setClass(matching: query, to: code).map { "set “\($0)” to \(code.lowercased())." } ?? notFound(query)
+            case .clearClass(let query): feedback = store.clearClass(matching: query).map { "removed the class from “\($0)”." } ?? notFound(query)
             case .clearCompleted: let count = store.clearCompleted(); feedback = count == 0 ? "no completed tasks to delete." : "deleted \(count) completed tasks."
             case .showToday: selectedDate = Calendar.current.startOfDay(for: Date()); page = .todo; feedback = "showing today."
             case .showDate(let date): selectedDate = Calendar.current.startOfDay(for: date); displayedMonth = Calendar.current.dateInterval(of: .month, for: date)?.start ?? date; page = .todo; feedback = "showing \(date.formatted(date: .long, time: .omitted))."
             case .showCalendar: page = .calendar; feedback = "showing calendar."
             case .nextMonth: page = .calendar; moveMonth(by: 1); feedback = "showing next month."
             case .previousMonth: page = .calendar; moveMonth(by: -1); feedback = "showing previous month."
-            case .help: feedback = "try “complete the quiz”, “priority quiz high”, “move quiz to friday”, or “show next tuesday”."
+            case .help: feedback = "try “rename quiz to midterm”, “move quiz to friday”, “priority quiz high”, or “assign quiz to math237”."
             }
             input = ""
         }
@@ -392,6 +397,10 @@ struct ContentView: View {
     private func mutationFeedback(_ title: String?, verb: String, query: String) -> String { title.map { "\(verb) “\($0)”." } ?? notFound(query) }
     private func notFound(_ query: String) -> String { "no task matches “\(query)”." }
     private func hasTime(_ date: Date) -> Bool { let p = Calendar.current.dateComponents([.hour, .minute], from: date); return p.hour != 0 || p.minute != 0 }
+    private func formattedTime(hour: Int, minute: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date()) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened).lowercased()
+    }
 }
 
 private struct TaskRow: View {

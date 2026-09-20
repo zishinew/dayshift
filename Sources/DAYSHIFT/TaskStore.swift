@@ -167,6 +167,67 @@ final class TaskStore {
     }
 
     @discardableResult
+    func shiftDate(matching query: String, amount: Int, unit: RepeatUnit, calendar: Calendar = .current) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        let component: Calendar.Component = unit == .day ? .day : unit == .week ? .weekOfYear : .month
+        guard let date = calendar.date(byAdding: component, value: amount, to: tasks[index].dueDate) else { return nil }
+        recordMutation()
+        tasks[index].dueDate = date
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
+    func setTime(matching query: String, hour: Int, minute: Int, calendar: Calendar = .current) -> String? {
+        guard let index = matchingIndex(for: query),
+              let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: tasks[index].dueDate) else { return nil }
+        guard tasks[index].dueDate != date else { return tasks[index].title }
+        recordMutation()
+        tasks[index].dueDate = date
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
+    func clearTime(matching query: String, calendar: Calendar = .current) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        let date = calendar.startOfDay(for: tasks[index].dueDate)
+        guard tasks[index].dueDate != date else { return tasks[index].title }
+        recordMutation()
+        tasks[index].dueDate = date
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
+    func setClass(matching query: String, to code: String) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        let normalized = code.replacingOccurrences(of: " ", with: "").uppercased()
+        guard tasks[index].classCode != normalized else { return tasks[index].title }
+        recordMutation()
+        tasks[index].classCode = normalized
+        upsertClass(code: normalized, name: classes.first(where: { $0.code == normalized })?.name ?? "")
+        let title = tasks[index].title
+        save()
+        saveClasses()
+        return title
+    }
+
+    @discardableResult
+    func clearClass(matching query: String) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        guard tasks[index].classCode != nil else { return tasks[index].title }
+        recordMutation()
+        tasks[index].classCode = nil
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
+    @discardableResult
     func setRepeat(matching query: String, to rule: RepeatRule) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
         guard tasks[index].repeatRule != rule else { return tasks[index].title }

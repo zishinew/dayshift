@@ -139,6 +139,21 @@ final class TaskCommandInterpreterTests: XCTestCase {
         XCTAssertEqual(interpreter.interpret("reapeat quiz every alternate tuesday", now: now), .repeatTask(query: "quiz", rule: RepeatRule(interval: 2, unit: .week, weekday: 3)))
         XCTAssertEqual(interpreter.interpret("rescheduel quiz to tommorow", now: now).rescheduleQuery, "quiz")
     }
+
+    func testNaturalDetailEditingCommands() {
+        let interpreter = TaskCommandInterpreter()
+
+        XCTAssertEqual(interpreter.interpret("change quiz's title to math237 midterm", now: now), .rename(query: "quiz", title: "math237 midterm"))
+        XCTAssertEqual(interpreter.interpret("call quiz math237 midterm", now: now), .rename(query: "quiz", title: "math237 midterm"))
+        XCTAssertEqual(interpreter.interpret("quiz should be due next tuesday", now: now).rescheduleQuery, "quiz")
+        XCTAssertEqual(interpreter.interpret("change the time of quiz to 4:30pm", now: now), .setTime(query: "quiz", hour: 16, minute: 30))
+        XCTAssertEqual(interpreter.interpret("make quiz an all-day task", now: now), .clearTime("quiz"))
+        XCTAssertEqual(interpreter.interpret("change quiz priority to low", now: now), .setPriority(query: "quiz", priority: .low))
+        XCTAssertEqual(interpreter.interpret("assign quiz to class math237", now: now), .setClass(query: "quiz", code: "MATH237"))
+        XCTAssertEqual(interpreter.interpret("remove the class from quiz", now: now), .clearClass("quiz"))
+        XCTAssertEqual(interpreter.interpret("push quiz back by two days", now: now), .shiftDate(query: "quiz", amount: 2, unit: .day))
+        XCTAssertEqual(interpreter.interpret("bring quiz forward one week", now: now), .shiftDate(query: "quiz", amount: -1, unit: .week))
+    }
 }
 
 private extension TaskCommand {

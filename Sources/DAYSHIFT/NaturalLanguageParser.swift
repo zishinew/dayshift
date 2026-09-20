@@ -37,7 +37,7 @@ struct NaturalLanguageParser {
             dueDate = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: dueDate) ?? dueDate
         } else if lower.range(of: #"\bmidnight\b"#, options: .regularExpression) != nil {
             dueDate = calendar.date(bySettingHour: 0, minute: 0, second: 0, of: dueDate) ?? dueDate
-        } else if let time = explicitTime(in: lower) {
+        } else if let time = timeComponents(in: lower) {
             dueDate = calendar.date(
                 bySettingHour: time.hour,
                 minute: time.minute,
@@ -305,7 +305,10 @@ struct NaturalLanguageParser {
         return nil
     }
 
-    private func explicitTime(in text: String) -> (hour: Int, minute: Int)? {
+    func timeComponents(in input: String) -> (hour: Int, minute: Int)? {
+        let text = normalizingLanguage(in: input).lowercased()
+        if text.range(of: #"\bnoon\b"#, options: .regularExpression) != nil { return (12, 0) }
+        if text.range(of: #"\bmidnight\b"#, options: .regularExpression) != nil { return (0, 0) }
         let twelveHour = #"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#
         let twentyFourHour = #"\b(?:at|by|around)\s+([01]?\d|2[0-3]):([0-5]\d)\b"#
         guard let regex = try? NSRegularExpression(pattern: twelveHour + "|" + twentyFourHour, options: [.caseInsensitive]),
