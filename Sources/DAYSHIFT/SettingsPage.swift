@@ -42,6 +42,7 @@ struct SettingsPage: View {
         }
         .background(appearance.backgroundColor)
         .foregroundStyle(appearance.textColor)
+        .tint(appearance.textColor)
     }
 
     private func settingSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -92,6 +93,7 @@ struct SettingsPage: View {
                 .font(.custom(appearance.fontName, size: appearance.scaled(16)))
             Slider(value: value, in: range)
                 .frame(maxWidth: 190)
+                .tint(appearance.textColor)
             Text(valueLabel)
                 .font(.custom(appearance.fontName, size: appearance.scaled(13)))
                 .foregroundStyle(.secondary)
