@@ -4,11 +4,13 @@ import SwiftUI
 @MainActor
 struct DAYSHIFTApp: App {
     @State private var store = TaskStore()
+    @State private var appearance = AppearanceSettings()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .environment(appearance)
                 .background(WindowAccessor())
                 .frame(minWidth: 700, minHeight: 580)
         }

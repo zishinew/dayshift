@@ -2,9 +2,10 @@ import SwiftUI
 
 @MainActor
 struct ContentView: View {
-    private enum Page { case todo, calendar }
+    private enum Page { case todo, calendar, settings }
 
     @Environment(TaskStore.self) private var store
+    @Environment(AppearanceSettings.self) private var appearance
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var page: Page = .todo
     @State private var input = ""
@@ -13,7 +14,7 @@ struct ContentView: View {
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
-    private let serif = "Times New Roman"
+    private var serif: String { appearance.fontName }
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
 
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
@@ -29,8 +30,11 @@ struct ContentView: View {
                     if page == .todo {
                         todoPage
                             .transition(.opacity)
-                    } else {
+                    } else if page == .calendar {
                         calendarPage
+                            .transition(.opacity)
+                    } else {
+                        SettingsPage()
                             .transition(.opacity)
                     }
                 }
@@ -42,8 +46,8 @@ struct ContentView: View {
 
             commandBar
         }
-        .background(Color.white)
-        .foregroundStyle(Color.black)
+        .background(appearance.backgroundColor)
+        .foregroundStyle(appearance.textColor)
         .preferredColorScheme(.light)
         .toolbar {
 #if compiler(>=6.0)
@@ -69,12 +73,12 @@ struct ContentView: View {
     private var classPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("classes")
-                .font(.custom(serif, size: 16))
+                .font(.custom(serif, size: appearance.scaled(16)))
                 .padding(.bottom, 18)
 
             if store.classes.isEmpty {
                 Text("no classes")
-                    .font(.custom(serif, size: 13))
+                    .font(.custom(serif, size: appearance.scaled(13)))
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
             } else {
@@ -106,10 +110,10 @@ struct ContentView: View {
 
         return VStack(alignment: .leading, spacing: 3) {
             Text(item.code.lowercased())
-                .font(.custom(serif, size: 15))
+                .font(.custom(serif, size: appearance.scaled(15)))
 
             Text(classSummary(taskCount: tasks.count, nextTask: nextTask))
-                .font(.custom(serif, size: 12))
+                .font(.custom(serif, size: appearance.scaled(12)))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
@@ -129,15 +133,17 @@ struct ContentView: View {
                 modeButton("todo", active: page == .todo) { withAnimation(motion) { page = .todo } }
                 Text("/").foregroundStyle(.secondary)
                 modeButton("calendar", active: page == .calendar) { withAnimation(motion) { page = .calendar } }
+                Text("/").foregroundStyle(.secondary)
+                modeButton("settings", active: page == .settings) { withAnimation(motion) { page = .settings } }
             }
             Spacer()
         }
-        .frame(width: 190, height: 28)
+        .frame(width: 280, height: 28)
     }
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .font(.custom(serif, size: 15))
+            .font(.custom(serif, size: appearance.scaled(15)))
             .fontWeight(active ? .semibold : .regular)
             .buttonStyle(.plain)
             .modifier(SubtleHover())
@@ -149,25 +155,25 @@ struct ContentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
-                    .font(.custom(serif, size: 24))
+                    .font(.custom(serif, size: appearance.scaled(24)))
                     .padding(.bottom, 22)
 
                 if todayTasks.isEmpty {
                     Text("no tasks today")
-                        .font(.custom(serif, size: 17))
+                        .font(.custom(serif, size: appearance.scaled(17)))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
                     if todayTasks.contains(where: { $0.isEvent }) {
                         Text("events")
-                            .font(.custom(serif, size: 15))
+                            .font(.custom(serif, size: appearance.scaled(15)))
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 3)
                         ForEach(todayTasks.filter(\.isEvent)) { task in taskRow(task, showsDueDate: false) }
                     }
                     if todayTasks.contains(where: { !$0.isEvent }) {
                         Text("tasks")
-                            .font(.custom(serif, size: 15))
+                            .font(.custom(serif, size: appearance.scaled(15)))
                             .foregroundStyle(.secondary)
                             .padding(.top, todayTasks.contains(where: { $0.isEvent }) ? 18 : 0)
                             .padding(.bottom, 3)
@@ -176,26 +182,26 @@ struct ContentView: View {
                 }
 
                 Text("upcoming")
-                    .font(.custom(serif, size: 16))
+                    .font(.custom(serif, size: appearance.scaled(16)))
                     .padding(.top, 34)
                     .padding(.bottom, 12)
 
                 if futureTasks.isEmpty {
                     Text("nothing upcoming")
-                        .font(.custom(serif, size: 14))
+                        .font(.custom(serif, size: appearance.scaled(14)))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
                     if futureTasks.contains(where: { $0.isEvent }) {
                         Text("events")
-                            .font(.custom(serif, size: 15))
+                            .font(.custom(serif, size: appearance.scaled(15)))
                             .foregroundStyle(.secondary)
                             .padding(.bottom, 3)
                         ForEach(futureTasks.filter(\.isEvent)) { task in taskRow(task, showsDueDate: true) }
                     }
                     if futureTasks.contains(where: { !$0.isEvent }) {
                         Text("tasks")
-                            .font(.custom(serif, size: 15))
+                            .font(.custom(serif, size: appearance.scaled(15)))
                             .foregroundStyle(.secondary)
                             .padding(.top, futureTasks.contains(where: { $0.isEvent }) ? 18 : 0)
                             .padding(.bottom, 3)
@@ -235,20 +241,20 @@ struct ContentView: View {
                         .modifier(SubtleHover())
                     Spacer()
                     Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
-                        .font(.custom(serif, size: 20))
+                        .font(.custom(serif, size: appearance.scaled(20)))
                         .contentTransition(.numericText())
                     Spacer()
                     Button("→") { moveMonth(by: 1) }
                         .modifier(SubtleHover())
                 }
-                .font(.custom(serif, size: 17))
+                .font(.custom(serif, size: appearance.scaled(17)))
                 .buttonStyle(.plain)
                 .padding(.bottom, 24)
 
                 LazyVGrid(columns: calendarColumns, spacing: 0) {
                     ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
                         Text(weekday.lowercased())
-                            .font(.custom(serif, size: 13))
+                            .font(.custom(serif, size: appearance.scaled(13)))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.bottom, 10)
@@ -302,17 +308,17 @@ struct ContentView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(date.formatted(.dateTime.day()))
-                    .font(.custom(serif, size: 15))
+                    .font(.custom(serif, size: appearance.scaled(15)))
                     .fontWeight(selected ? .semibold : .regular)
                 ForEach(tasks.prefix(2)) { task in
                     Text(task.title.lowercased())
-                        .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: appearance.scaled(12)))
                         .lineLimit(1)
                         .opacity(task.isComplete ? 0.45 : 0.85)
                 }
                 Spacer(minLength: 0)
             }
-            .foregroundStyle(Color.black)
+            .foregroundStyle(appearance.textColor)
             .opacity(inMonth ? 1 : 0.25)
             .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
             .overlay(alignment: .topLeading) {
@@ -334,7 +340,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 TextField("type anything…", text: $input)
                     .textFieldStyle(.plain)
-                    .font(.custom(serif, size: 19))
+                    .font(.custom(serif, size: appearance.scaled(19)))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in
                         withAnimation(motion) { feedback = nil }
@@ -347,44 +353,46 @@ struct ContentView: View {
                         return .handled
                     }
                 Text("return ↵")
-                    .font(.custom(serif, size: 12))
+                    .font(.custom(serif, size: appearance.scaled(12)))
                     .foregroundStyle(.secondary)
             }
             .frame(height: 32)
 
-            if let feedback {
+            if appearance.showCommandHints {
+                if let feedback {
                 Text(feedback.lowercased())
-                    .font(.custom(serif, size: 12))
-                    .foregroundStyle(Color.black)
+                        .font(.custom(serif, size: appearance.scaled(12)))
+                    .foregroundStyle(appearance.textColor)
                     .lineLimit(2)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
-            } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 if let classSuggestion {
                     Text("tab ↹ add \(classSuggestion.code.lowercased()) · \(classSuggestion.name.lowercased())")
-                        .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: appearance.scaled(12)))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .transition(.opacity)
                 } else {
                     Text(interpreter.interpret(input).preview.lowercased())
-                        .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: appearance.scaled(12)))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .transition(.opacity)
                 }
-            } else {
+                } else {
                 Text("try “quiz next wednesday” or “move quiz to friday”")
-                    .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: appearance.scaled(12)))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .transition(.opacity)
+                }
             }
         }
         .padding(.horizontal, 38)
         .padding(.top, 12)
         .padding(.bottom, 24)
         .frame(maxWidth: .infinity)
-        .background(Color.white)
+        .background(appearance.backgroundColor)
         .animation(motion, value: feedback)
         .animation(motion, value: classSuggestion?.id)
     }
@@ -451,6 +459,7 @@ private struct TaskRow: View {
     let onDateChange: (Date) -> Void
     let onPriorityChange: (TaskPriority) -> Void
     let onRepeatChange: (RepeatRule?) -> Void
+    @Environment(AppearanceSettings.self) private var appearance
 
     @State private var isEditingTitle = false
     @State private var titleDraft = ""
@@ -476,7 +485,7 @@ private struct TaskRow: View {
                 if isEditingTitle {
                     TextField("task title", text: $titleDraft)
                         .textFieldStyle(.plain)
-                        .font(.custom(serif, size: 18))
+                        .font(.custom(serif, size: appearance.scaled(18)))
                         .focused($titleIsFocused)
                         .onSubmit(commitTitle)
                         .onKeyPress(.escape) {
@@ -489,7 +498,7 @@ private struct TaskRow: View {
                         .transition(.opacity)
                 } else {
                     Text(task.title.lowercased())
-                        .font(.custom(serif, size: 18))
+                        .font(.custom(serif, size: appearance.scaled(18)))
                         .strikethrough(task.isComplete)
                         .foregroundStyle(task.isComplete ? .secondary : .primary)
                         .contentShape(Rectangle())
@@ -511,7 +520,7 @@ private struct TaskRow: View {
 
             Spacer()
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, appearance.rowSpacing)
         .zIndex(detailEditor == nil ? 0 : 1)
         .animation(.easeInOut(duration: 0.15), value: detailEditor)
     }
@@ -536,7 +545,7 @@ private struct TaskRow: View {
             detailSeparator
             detailButton(repeatLabel, editor: .repeatRule)
         }
-        .font(.custom(serif, size: 13))
+        .font(.custom(serif, size: appearance.scaled(13)))
         .foregroundStyle(.tertiary)
     }
 
@@ -553,7 +562,7 @@ private struct TaskRow: View {
         }
         .buttonStyle(.plain)
         .modifier(SubtleHover())
-        .foregroundStyle(detailEditor == editor ? Color.black : Color.secondary)
+        .foregroundStyle(detailEditor == editor ? appearance.textColor : Color.secondary)
     }
 
     @ViewBuilder
@@ -598,7 +607,7 @@ private struct TaskRow: View {
                 Spacer(minLength: 8)
                 if selected { Text("·") }
             }
-            .font(.custom(serif, size: 13))
+            .font(.custom(serif, size: appearance.scaled(13)))
             .contentShape(Rectangle())
             .padding(.vertical, 5)
         }
@@ -669,15 +678,17 @@ private struct TaskRow: View {
 }
 
 private struct DetailPanel: ViewModifier {
+    @Environment(AppearanceSettings.self) private var appearance
+
     func body(content: Content) -> some View {
         content
             .padding(.horizontal, 11)
             .padding(.vertical, 9)
-            .background(Color.white)
+            .background(appearance.backgroundColor)
             .overlay {
-                Rectangle().stroke(Color.black.opacity(0.13), lineWidth: 1)
+                Rectangle().stroke(appearance.textColor.opacity(0.13), lineWidth: 1)
             }
-            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 3)
+            .shadow(color: appearance.textColor.opacity(0.08), radius: 8, y: 3)
     }
 }
 
@@ -695,6 +706,7 @@ private struct SubtleHover: ViewModifier {
 }
 
 private struct CompactCalendar: View {
+    @Environment(AppearanceSettings.self) private var appearance
     let selectedDate: Date
     let serif: String
     let onSelect: (Date) -> Void
@@ -715,7 +727,7 @@ private struct CompactCalendar: View {
                     .modifier(SubtleHover())
                 Spacer()
                 Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
-                    .font(.custom(serif, size: 14))
+                    .font(.custom(serif, size: appearance.scaled(14)))
                 Spacer()
                 Button("→") { moveMonth(1) }
                     .modifier(SubtleHover())
@@ -725,7 +737,7 @@ private struct CompactCalendar: View {
             LazyVGrid(columns: columns, spacing: 5) {
                 ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, day in
                     Text(day.lowercased())
-                        .font(.custom(serif, size: 10))
+                        .font(.custom(serif, size: appearance.scaled(10)))
                         .foregroundStyle(.secondary)
                 }
 
@@ -736,7 +748,7 @@ private struct CompactCalendar: View {
                         onSelect(date)
                     } label: {
                         Text(date.formatted(.dateTime.day()))
-                            .font(.custom(serif, size: 12))
+                            .font(.custom(serif, size: appearance.scaled(12)))
                             .fontWeight(selected ? .semibold : .regular)
                             .frame(width: 24, height: 23)
                             .overlay(alignment: .bottom) {
