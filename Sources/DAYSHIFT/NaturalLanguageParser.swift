@@ -14,6 +14,7 @@ struct NaturalLanguageParser {
         var dueDate = start
         let repeatRule = repeatRule(in: lower)
         let classCode = classCode(in: lower)
+        let isEvent = isEvent(in: lower)
 
         if lower.contains("day after tomorrow") {
             dueDate = calendar.date(byAdding: .day, value: 2, to: start) ?? start
@@ -66,8 +67,13 @@ struct NaturalLanguageParser {
             dueDate: dueDate,
             priority: priority,
             classCode: classCode,
-            repeatRule: repeatRule
+            repeatRule: repeatRule,
+            isEvent: isEvent
         )
+    }
+
+    private func isEvent(in text: String) -> Bool {
+        text.range(of: #"\b(quiz(?:zes)?|test(?:s)?|exam(?:s)?|midterm(?:s)?|final(?:s)?|assessment(?:s)?|presentation(?:s)?|appointment(?:s)?|meeting(?:s)?|interview(?:s)?|lecture(?:s)?|concert(?:s)?|flight(?:s)?)\b"#, options: .regularExpression) != nil
     }
 
     func normalizingWeekdays(in input: String) -> String {

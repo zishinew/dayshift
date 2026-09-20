@@ -38,7 +38,7 @@ final class TaskStore {
 
     func add(_ parsed: ParsedTask) {
         recordMutation()
-        tasks.insert(TaskItem(title: parsed.title, dueDate: parsed.dueDate, priority: parsed.priority, classCode: parsed.classCode, repeatRule: parsed.repeatRule), at: 0)
+        tasks.insert(TaskItem(title: parsed.title, dueDate: parsed.dueDate, priority: parsed.priority, classCode: parsed.classCode, repeatRule: parsed.repeatRule, isEvent: parsed.isEvent), at: 0)
         save()
     }
 
@@ -95,6 +95,7 @@ final class TaskStore {
     }
 
     func toggle(_ task: TaskItem) {
+        guard !task.isEvent else { return }
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
         recordMutation()
         tasks[index].isComplete.toggle()
@@ -105,6 +106,7 @@ final class TaskStore {
     @discardableResult
     func setCompletion(matching query: String, to value: Bool) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        guard !tasks[index].isEvent else { return nil }
         let wasComplete = tasks[index].isComplete
         guard wasComplete != value else { return tasks[index].title }
         recordMutation()
@@ -112,7 +114,7 @@ final class TaskStore {
         let title = tasks[index].title
         if value, !wasComplete, let rule = tasks[index].repeatRule {
             let nextDate = rule.nextDate(after: tasks[index].dueDate)
-            let next = TaskItem(title: tasks[index].title, dueDate: nextDate, priority: tasks[index].priority, classCode: tasks[index].classCode, repeatRule: rule)
+            let next = TaskItem(title: tasks[index].title, dueDate: nextDate, priority: tasks[index].priority, classCode: tasks[index].classCode, repeatRule: rule, isEvent: tasks[index].isEvent)
             tasks.insert(next, at: 0)
         }
         updateCompletionDeletion(for: tasks[index])

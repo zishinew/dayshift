@@ -67,9 +67,11 @@ struct TaskItem: Identifiable, Codable, Hashable {
     var createdAt: Date
     var classCode: String?
     var repeatRule: RepeatRule?
+    /// Scheduled items such as quizzes, tests, and meetings are events rather than actionable tasks.
+    var isEvent: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, dueDate, priority, isComplete, createdAt, classCode, repeatRule
+        case id, title, dueDate, priority, isComplete, createdAt, classCode, repeatRule, isEvent
     }
 
     init(
@@ -80,7 +82,8 @@ struct TaskItem: Identifiable, Codable, Hashable {
         isComplete: Bool = false,
         createdAt: Date = Date(),
         classCode: String? = nil,
-        repeatRule: RepeatRule? = nil
+        repeatRule: RepeatRule? = nil,
+        isEvent: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -90,6 +93,7 @@ struct TaskItem: Identifiable, Codable, Hashable {
         self.createdAt = createdAt
         self.classCode = classCode
         self.repeatRule = repeatRule
+        self.isEvent = isEvent
     }
 
     init(from decoder: Decoder) throws {
@@ -102,6 +106,11 @@ struct TaskItem: Identifiable, Codable, Hashable {
         createdAt = try values.decode(Date.self, forKey: .createdAt)
         classCode = try values.decodeIfPresent(String.self, forKey: .classCode)
         repeatRule = try values.decodeIfPresent(RepeatRule.self, forKey: .repeatRule)
+        isEvent = try values.decodeIfPresent(Bool.self, forKey: .isEvent) ?? Self.looksLikeEvent(title)
+    }
+
+    private static func looksLikeEvent(_ title: String) -> Bool {
+        title.range(of: #"\b(quiz(?:zes)?|test(?:s)?|exam(?:s)?|midterm(?:s)?|final(?:s)?|assessment(?:s)?|presentation(?:s)?|appointment(?:s)?|meeting(?:s)?|interview(?:s)?|lecture(?:s)?|concert(?:s)?|flight(?:s)?)\b"#, options: .regularExpression) != nil
     }
 }
 
@@ -111,4 +120,14 @@ struct ParsedTask: Equatable {
     let priority: TaskPriority
     let classCode: String?
     let repeatRule: RepeatRule?
+    let isEvent: Bool
+
+    init(title: String, dueDate: Date, priority: TaskPriority, classCode: String?, repeatRule: RepeatRule?, isEvent: Bool = false) {
+        self.title = title
+        self.dueDate = dueDate
+        self.priority = priority
+        self.classCode = classCode
+        self.repeatRule = repeatRule
+        self.isEvent = isEvent
+    }
 }

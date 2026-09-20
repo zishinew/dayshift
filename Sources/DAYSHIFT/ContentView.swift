@@ -157,18 +157,20 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
-                    ForEach(todayTasks) { task in
-                        TaskRow(
-                            task: task,
-                            serif: serif,
-                            showsDueDate: false,
-                            onToggle: { withAnimation(motion) { store.toggle(task) } },
-                            onRename: { _ = store.rename(task, to: $0) },
-                            onDateChange: { _ = store.setDate(task, to: $0) },
-                            onPriorityChange: { _ = store.setPriority(task, to: $0) },
-                            onRepeatChange: { _ = store.setRepeat(task, to: $0) }
-                        )
-                        .transition(.opacity)
+                    if todayTasks.contains(where: { $0.isEvent }) {
+                        Text("events")
+                            .font(.custom(serif, size: 15))
+                            .foregroundStyle(.secondary)
+                            .padding(.bottom, 3)
+                        ForEach(todayTasks.filter(\.isEvent)) { task in taskRow(task, showsDueDate: false) }
+                    }
+                    if todayTasks.contains(where: { !$0.isEvent }) {
+                        Text("tasks")
+                            .font(.custom(serif, size: 15))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, todayTasks.contains(where: { $0.isEvent }) ? 18 : 0)
+                            .padding(.bottom, 3)
+                        ForEach(todayTasks.filter { !$0.isEvent }) { task in taskRow(task, showsDueDate: false) }
                     }
                 }
 
@@ -183,18 +185,20 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
-                    ForEach(futureTasks) { task in
-                        TaskRow(
-                            task: task,
-                            serif: serif,
-                            showsDueDate: true,
-                            onToggle: { withAnimation(motion) { store.toggle(task) } },
-                            onRename: { _ = store.rename(task, to: $0) },
-                            onDateChange: { _ = store.setDate(task, to: $0) },
-                            onPriorityChange: { _ = store.setPriority(task, to: $0) },
-                            onRepeatChange: { _ = store.setRepeat(task, to: $0) }
-                        )
-                        .transition(.opacity)
+                    if futureTasks.contains(where: { $0.isEvent }) {
+                        Text("events")
+                            .font(.custom(serif, size: 15))
+                            .foregroundStyle(.secondary)
+                            .padding(.bottom, 3)
+                        ForEach(futureTasks.filter(\.isEvent)) { task in taskRow(task, showsDueDate: true) }
+                    }
+                    if futureTasks.contains(where: { !$0.isEvent }) {
+                        Text("tasks")
+                            .font(.custom(serif, size: 15))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, futureTasks.contains(where: { $0.isEvent }) ? 18 : 0)
+                            .padding(.bottom, 3)
+                        ForEach(futureTasks.filter { !$0.isEvent }) { task in taskRow(task, showsDueDate: true) }
                     }
                 }
             }
@@ -205,6 +209,21 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .animation(motion, value: agendaTasks)
         }
+    }
+
+    @ViewBuilder
+    private func taskRow(_ task: TaskItem, showsDueDate: Bool) -> some View {
+        TaskRow(
+            task: task,
+            serif: serif,
+            showsDueDate: showsDueDate,
+            onToggle: { withAnimation(motion) { store.toggle(task) } },
+            onRename: { _ = store.rename(task, to: $0) },
+            onDateChange: { _ = store.setDate(task, to: $0) },
+            onPriorityChange: { _ = store.setPriority(task, to: $0) },
+            onRepeatChange: { _ = store.setRepeat(task, to: $0) }
+        )
+        .transition(.opacity)
     }
 
     private var calendarPage: some View {
@@ -436,15 +455,17 @@ private struct TaskRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: onToggle) {
-                Image(systemName: task.isComplete ? "checkmark.square" : "square")
-                    .font(.system(size: 15, weight: .regular))
-                    .frame(width: 16, height: 16)
-                    .contentTransition(.symbolEffect(.replace))
+            if !task.isEvent {
+                Button(action: onToggle) {
+                    Image(systemName: task.isComplete ? "checkmark.square" : "square")
+                        .font(.system(size: 15, weight: .regular))
+                        .frame(width: 16, height: 16)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
+                .padding(.top, 2)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
-            .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 3) {
                 if isEditingTitle {

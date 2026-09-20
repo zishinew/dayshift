@@ -14,6 +14,7 @@ final class NaturalLanguageParserTests: XCTestCase {
         XCTAssertEqual(result.title, "Study for quiz")
         XCTAssertEqual(calendar.component(.day, from: result.dueDate), 23)
         XCTAssertEqual(result.priority, .medium)
+        XCTAssertTrue(result.isEvent)
     }
 
     func testUrgentTaskWithTime() throws {
@@ -24,6 +25,16 @@ final class NaturalLanguageParserTests: XCTestCase {
         XCTAssertEqual(calendar.component(.hour, from: result.dueDate), 16)
         XCTAssertEqual(calendar.component(.minute, from: result.dueDate), 30)
         XCTAssertEqual(result.priority, .high)
+        XCTAssertFalse(result.isEvent)
+    }
+
+    func testAssessmentLanguageCreatesAnEvent() throws {
+        let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-18T12:00:00Z"))
+        let parser = NaturalLanguageParser(calendar: calendar)
+
+        XCTAssertTrue(parser.parse("I have a midterm next Tuesday", now: now).isEvent)
+        XCTAssertTrue(parser.parse("team meeting tomorrow", now: now).isEvent)
+        XCTAssertFalse(parser.parse("finish my assignment tomorrow", now: now).isEvent)
     }
 
     func testRepeatingClassTask() throws {
