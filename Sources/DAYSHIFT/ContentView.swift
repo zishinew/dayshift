@@ -152,7 +152,7 @@ struct ContentView: View {
                     .padding(.bottom, 22)
 
                 if todayTasks.isEmpty {
-                    Text("no todos")
+                    Text("no tasks today")
                         .font(.custom(serif, size: 17))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
