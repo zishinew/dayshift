@@ -16,8 +16,8 @@ struct SettingsPage: View {
                     colorRow("text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }))
                     colorRow("background", color: Binding(get: { appearance.backgroundColor }, set: { appearance.backgroundColor = $0 }))
                     fontRow
-                    sliderRow("text size", value: Binding(get: { appearance.textSize }, set: { appearance.textSize = $0 }), range: 14...25, valueLabel: "(Int(appearance.textSize))")
-                    sliderRow("row spacing", value: Binding(get: { appearance.rowSpacing }, set: { appearance.rowSpacing = $0 }), range: 4...18, valueLabel: "(Int(appearance.rowSpacing))")
+                    sliderRow("text size", value: Binding(get: { appearance.textSize }, set: { appearance.textSize = $0 }), range: 14...25, valueLabel: "\(Int(appearance.textSize))")
+                    sliderRow("row spacing", value: Binding(get: { appearance.rowSpacing }, set: { appearance.rowSpacing = $0 }), range: 4...18, valueLabel: "\(Int(appearance.rowSpacing))")
                 }
 
                 settingSection("behavior") {
