@@ -69,17 +69,17 @@ struct ContentView: View {
     private var classPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("classes")
-                .font(.custom(serif, size: 14))
+                .font(.custom(serif, size: 16))
 
             if store.classes.isEmpty {
                 Text("none")
-                    .font(.custom(serif, size: 11))
+                    .font(.custom(serif, size: 13))
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
             } else {
                 ForEach(store.classes.sorted { $0.code < $1.code }) { item in
                     Text(item.code.lowercased())
-                        .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: 14))
                         .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
             }
@@ -109,7 +109,7 @@ struct ContentView: View {
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
         Button(title, action: action)
-            .font(.custom(serif, size: 13))
+            .font(.custom(serif, size: 15))
             .fontWeight(active ? .semibold : .regular)
             .buttonStyle(.plain)
             .opacity(active ? 1 : 0.5)
@@ -120,12 +120,12 @@ struct ContentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
-                    .font(.custom(serif, size: 22))
+                    .font(.custom(serif, size: 24))
                     .padding(.bottom, 22)
 
                 if todayTasks.isEmpty {
                     Text("no todos")
-                        .font(.custom(serif, size: 15))
+                        .font(.custom(serif, size: 17))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
@@ -138,13 +138,13 @@ struct ContentView: View {
                 }
 
                 Text("upcoming")
-                    .font(.custom(serif, size: 14))
+                    .font(.custom(serif, size: 16))
                     .padding(.top, 34)
                     .padding(.bottom, 12)
 
                 if futureTasks.isEmpty {
                     Text("nothing upcoming")
-                        .font(.custom(serif, size: 12))
+                        .font(.custom(serif, size: 14))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
@@ -172,19 +172,19 @@ struct ContentView: View {
                     Button("←") { moveMonth(by: -1) }
                     Spacer()
                     Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
-                        .font(.custom(serif, size: 18))
+                        .font(.custom(serif, size: 20))
                         .contentTransition(.numericText())
                     Spacer()
                     Button("→") { moveMonth(by: 1) }
                 }
-                .font(.custom(serif, size: 15))
+                .font(.custom(serif, size: 17))
                 .buttonStyle(.plain)
                 .padding(.bottom, 24)
 
                 LazyVGrid(columns: calendarColumns, spacing: 0) {
                     ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
                         Text(weekday.lowercased())
-                            .font(.custom(serif, size: 11))
+                            .font(.custom(serif, size: 13))
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.bottom, 10)
@@ -238,11 +238,11 @@ struct ContentView: View {
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(date.formatted(.dateTime.day()))
-                    .font(.custom(serif, size: 13))
+                    .font(.custom(serif, size: 15))
                     .fontWeight(selected ? .semibold : .regular)
                 ForEach(tasks.prefix(2)) { task in
                     Text(task.title.lowercased())
-                        .font(.custom(serif, size: 10))
+                        .font(.custom(serif, size: 12))
                         .lineLimit(1)
                         .opacity(task.isComplete ? 0.45 : 0.85)
                 }
@@ -269,7 +269,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 TextField("type anything…", text: $input)
                     .textFieldStyle(.plain)
-                    .font(.custom(serif, size: 17))
+                    .font(.custom(serif, size: 19))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in
                         withAnimation(motion) { feedback = nil }
@@ -282,34 +282,34 @@ struct ContentView: View {
                         return .handled
                     }
                 Text("return ↵")
-                    .font(.custom(serif, size: 10))
+                    .font(.custom(serif, size: 12))
                     .foregroundStyle(.secondary)
             }
             .frame(height: 32)
 
             if let feedback {
                 Text(feedback.lowercased())
-                    .font(.custom(serif, size: 10))
+                    .font(.custom(serif, size: 12))
                     .foregroundStyle(Color.black)
                     .lineLimit(2)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
             } else if !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 if let classSuggestion {
                     Text("tab ↹ add \(classSuggestion.code.lowercased()) · \(classSuggestion.name.lowercased())")
-                        .font(.custom(serif, size: 10))
+                        .font(.custom(serif, size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .transition(.opacity)
                 } else {
                     Text(interpreter.interpret(input).preview.lowercased())
-                        .font(.custom(serif, size: 10))
+                        .font(.custom(serif, size: 12))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                         .transition(.opacity)
                 }
             } else {
                 Text("try “quiz next wednesday” or “move quiz to friday”")
-                    .font(.custom(serif, size: 10))
+                    .font(.custom(serif, size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .transition(.opacity)
@@ -375,8 +375,8 @@ private struct TaskRow: View {
         HStack(alignment: .top, spacing: 12) {
             Button(action: onToggle) {
                 Image(systemName: task.isComplete ? "checkmark.square" : "square")
-                    .font(.system(size: 13, weight: .regular))
-                    .frame(width: 14, height: 14)
+                    .font(.system(size: 15, weight: .regular))
+                    .frame(width: 16, height: 16)
                     .contentTransition(.symbolEffect(.replace))
             }
             .buttonStyle(.plain)
@@ -385,12 +385,12 @@ private struct TaskRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(task.title.lowercased())
-                    .font(.custom(serif, size: 16))
+                    .font(.custom(serif, size: 18))
                     .strikethrough(task.isComplete)
                     .foregroundStyle(task.isComplete ? .secondary : .primary)
 
                 Text(metadata.lowercased())
-                    .font(.custom(serif, size: 11))
+                    .font(.custom(serif, size: 13))
                     .foregroundStyle(.tertiary)
             }
 
