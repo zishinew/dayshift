@@ -110,11 +110,18 @@ final class TaskStoreHistoryTests: XCTestCase {
         let mathQuiz = store.tasks.first { $0.classCode == "MATH237" }!
 
         XCTAssertEqual(store.rename(mathQuiz, to: "Calculus quiz"), "Calculus quiz")
+        let newDay = Calendar.current.date(byAdding: .day, value: 3, to: mathQuiz.dueDate)!
+        XCTAssertEqual(store.setDate(mathQuiz, to: newDay), "Calculus quiz")
+        XCTAssertEqual(store.setPriority(mathQuiz, to: .high), "Calculus quiz")
+        XCTAssertEqual(store.setRepeat(mathQuiz, to: RepeatRule(interval: 1, unit: .week)), "Calculus quiz")
         XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.title, "Calculus quiz")
+        XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.priority, .high)
+        XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.repeatRule, RepeatRule(interval: 1, unit: .week))
         XCTAssertEqual(store.tasks.first { $0.classCode == "STAT230" }?.title, "Quiz")
+        XCTAssertEqual(store.tasks.first { $0.classCode == "STAT230" }?.priority, .medium)
 
         store.undo()
-        XCTAssertEqual(store.tasks.first { $0.id == mathQuiz.id }?.title, "Quiz")
+        XCTAssertNil(store.tasks.first { $0.id == mathQuiz.id }?.repeatRule)
     }
 
     @MainActor

@@ -158,6 +158,16 @@ final class TaskStore {
     @discardableResult
     func setPriority(matching query: String, to priority: TaskPriority) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return setPriority(at: index, to: priority)
+    }
+
+    @discardableResult
+    func setPriority(_ task: TaskItem, to priority: TaskPriority) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return setPriority(at: index, to: priority)
+    }
+
+    private func setPriority(at index: Int, to priority: TaskPriority) -> String? {
         guard tasks[index].priority != priority else { return tasks[index].title }
         recordMutation()
         tasks[index].priority = priority
@@ -169,6 +179,22 @@ final class TaskStore {
     @discardableResult
     func reschedule(matching query: String, to date: Date) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return reschedule(at: index, to: date)
+    }
+
+    @discardableResult
+    func setDate(_ task: TaskItem, to day: Date, calendar: Calendar = .current) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        let time = calendar.dateComponents([.hour, .minute, .second], from: tasks[index].dueDate)
+        var dayParts = calendar.dateComponents([.year, .month, .day], from: day)
+        dayParts.hour = time.hour
+        dayParts.minute = time.minute
+        dayParts.second = time.second
+        guard let date = calendar.date(from: dayParts) else { return nil }
+        return reschedule(at: index, to: date)
+    }
+
+    private func reschedule(at index: Int, to date: Date) -> String? {
         guard tasks[index].dueDate != date else { return tasks[index].title }
         recordMutation()
         tasks[index].dueDate = date
@@ -241,6 +267,16 @@ final class TaskStore {
     @discardableResult
     func setRepeat(matching query: String, to rule: RepeatRule) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return setRepeat(at: index, to: rule)
+    }
+
+    @discardableResult
+    func setRepeat(_ task: TaskItem, to rule: RepeatRule?) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return setRepeat(at: index, to: rule)
+    }
+
+    private func setRepeat(at index: Int, to rule: RepeatRule?) -> String? {
         guard tasks[index].repeatRule != rule else { return tasks[index].title }
         recordMutation()
         tasks[index].repeatRule = rule

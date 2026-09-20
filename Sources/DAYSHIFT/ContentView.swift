@@ -163,7 +163,10 @@ struct ContentView: View {
                             serif: serif,
                             showsDueDate: false,
                             onToggle: { withAnimation(motion) { store.toggle(task) } },
-                            onRename: { _ = store.rename(task, to: $0) }
+                            onRename: { _ = store.rename(task, to: $0) },
+                            onDateChange: { _ = store.setDate(task, to: $0) },
+                            onPriorityChange: { _ = store.setPriority(task, to: $0) },
+                            onRepeatChange: { _ = store.setRepeat(task, to: $0) }
                         )
                         .transition(.opacity)
                     }
@@ -186,7 +189,10 @@ struct ContentView: View {
                             serif: serif,
                             showsDueDate: true,
                             onToggle: { withAnimation(motion) { store.toggle(task) } },
-                            onRename: { _ = store.rename(task, to: $0) }
+                            onRename: { _ = store.rename(task, to: $0) },
+                            onDateChange: { _ = store.setDate(task, to: $0) },
+                            onPriorityChange: { _ = store.setPriority(task, to: $0) },
+                            onRepeatChange: { _ = store.setRepeat(task, to: $0) }
                         )
                         .transition(.opacity)
                     }
@@ -412,14 +418,20 @@ struct ContentView: View {
 }
 
 private struct TaskRow: View {
+    private enum DetailEditor: Equatable { case date, priority, repeatRule }
+
     let task: TaskItem
     let serif: String
     let showsDueDate: Bool
     let onToggle: () -> Void
     let onRename: (String) -> Void
+    let onDateChange: (Date) -> Void
+    let onPriorityChange: (TaskPriority) -> Void
+    let onRepeatChange: (RepeatRule?) -> Void
 
     @State private var isEditingTitle = false
     @State private var titleDraft = ""
+    @State private var detailEditor: DetailEditor?
     @FocusState private var titleIsFocused: Bool
 
     var body: some View {
@@ -460,14 +472,123 @@ private struct TaskRow: View {
                         .transition(.opacity)
                 }
 
-                Text(metadata.lowercased())
-                    .font(.custom(serif, size: 13))
-                    .foregroundStyle(.tertiary)
+                detailLine
+
+                if let detailEditor {
+                    detailEditorView(detailEditor)
+                        .padding(.top, 7)
+                        .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading)))
+                        .zIndex(2)
+                }
             }
 
             Spacer()
         }
         .padding(.vertical, 9)
+        .zIndex(detailEditor == nil ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: detailEditor)
+    }
+
+    private var detailLine: some View {
+        HStack(spacing: 7) {
+            detailButton(dateLabel, editor: .date)
+
+            if hasTime {
+                detailSeparator
+                Text(task.dueDate.formatted(date: .omitted, time: .shortened).lowercased())
+            }
+
+            detailSeparator
+            detailButton(task.priority.rawValue.lowercased(), editor: .priority)
+
+            if let classCode = task.classCode, !task.title.localizedCaseInsensitiveContains(classCode) {
+                detailSeparator
+                Text(classCode.lowercased())
+            }
+
+            detailSeparator
+            detailButton(task.repeatRule?.label ?? "repeat", editor: .repeatRule)
+        }
+        .font(.custom(serif, size: 13))
+        .foregroundStyle(.tertiary)
+    }
+
+    private var detailSeparator: some View {
+        Text("·")
+            .accessibilityHidden(true)
+    }
+
+    private func detailButton(_ title: String, editor: DetailEditor) -> some View {
+        Button(title.lowercased()) {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                detailEditor = detailEditor == editor ? nil : editor
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(detailEditor == editor ? Color.black : Color.secondary)
+    }
+
+    @ViewBuilder
+    private func detailEditorView(_ editor: DetailEditor) -> some View {
+        switch editor {
+        case .date:
+            CompactCalendar(selectedDate: task.dueDate, serif: serif) { date in
+                onDateChange(date)
+                detailEditor = nil
+            }
+            .frame(width: 238)
+            .modifier(DetailPanel())
+        case .priority:
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(TaskPriority.allCases, id: \.self) { priority in
+                    detailChoice(priority.rawValue.lowercased(), selected: task.priority == priority) {
+                        onPriorityChange(priority)
+                        detailEditor = nil
+                    }
+                }
+            }
+            .frame(width: 116, alignment: .leading)
+            .modifier(DetailPanel())
+        case .repeatRule:
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(repeatChoices.enumerated()), id: \.offset) { _, choice in
+                    detailChoice(choice.label, selected: task.repeatRule == choice.rule) {
+                        onRepeatChange(choice.rule)
+                        detailEditor = nil
+                    }
+                }
+            }
+            .frame(width: 178, alignment: .leading)
+            .modifier(DetailPanel())
+        }
+    }
+
+    private func detailChoice(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 9) {
+                Text(label.lowercased())
+                Spacer(minLength: 8)
+                if selected { Text("·") }
+            }
+            .font(.custom(serif, size: 13))
+            .contentShape(Rectangle())
+            .padding(.vertical, 5)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var repeatChoices: [(label: String, rule: RepeatRule?)] {
+        let weekday = Calendar.current.component(.weekday, from: task.dueDate)
+        let weekdayName = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][weekday - 1]
+        return [
+            ("does not repeat", nil),
+            ("every day", RepeatRule(interval: 1, unit: .day)),
+            ("every week", RepeatRule(interval: 1, unit: .week)),
+            ("every other week", RepeatRule(interval: 2, unit: .week)),
+            ("every month", RepeatRule(interval: 1, unit: .month)),
+            ("every \(weekdayName)", RepeatRule(interval: 1, unit: .week, weekday: weekday)),
+            ("every other \(weekdayName)", RepeatRule(interval: 2, unit: .week, weekday: weekday))
+        ]
     }
 
     private func beginEditing() {
@@ -492,25 +613,102 @@ private struct TaskRow: View {
         titleIsFocused = false
     }
 
-    private var metadata: String {
+    private var hasTime: Bool {
         let calendar = Calendar.current
-        let hasTime = calendar.component(.hour, from: task.dueDate) != 0 || calendar.component(.minute, from: task.dueDate) != 0
-        var parts: [String] = []
+        return calendar.component(.hour, from: task.dueDate) != 0 || calendar.component(.minute, from: task.dueDate) != 0
+    }
 
-        if showsDueDate {
-            parts.append(task.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
-        }
-        if hasTime {
-            parts.append(task.dueDate.formatted(date: .omitted, time: .shortened))
-        }
-        parts.append(task.priority.rawValue)
-        if let classCode = task.classCode, !task.title.localizedCaseInsensitiveContains(classCode) {
-            parts.append(classCode)
-        }
-        if let repeatRule = task.repeatRule {
-            parts.append(repeatRule.label)
-        }
+    private var dateLabel: String {
+        showsDueDate ? task.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()) : "today"
+    }
+}
 
-        return parts.joined(separator: "  ·  ")
+private struct DetailPanel: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .background(Color.white)
+            .overlay {
+                Rectangle().stroke(Color.black.opacity(0.13), lineWidth: 1)
+            }
+            .shadow(color: Color.black.opacity(0.08), radius: 8, y: 3)
+    }
+}
+
+private struct CompactCalendar: View {
+    let selectedDate: Date
+    let serif: String
+    let onSelect: (Date) -> Void
+    @State private var displayedMonth: Date
+
+    init(selectedDate: Date, serif: String, onSelect: @escaping (Date) -> Void) {
+        self.selectedDate = selectedDate
+        self.serif = serif
+        self.onSelect = onSelect
+        let start = Calendar.current.dateInterval(of: .month, for: selectedDate)?.start ?? selectedDate
+        _displayedMonth = State(initialValue: start)
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            HStack {
+                Button("←") { moveMonth(-1) }
+                Spacer()
+                Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
+                    .font(.custom(serif, size: 14))
+                Spacer()
+                Button("→") { moveMonth(1) }
+            }
+            .buttonStyle(.plain)
+
+            LazyVGrid(columns: columns, spacing: 5) {
+                ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, day in
+                    Text(day.lowercased())
+                        .font(.custom(serif, size: 10))
+                        .foregroundStyle(.secondary)
+                }
+
+                ForEach(monthDates, id: \.self) { date in
+                    let inMonth = Calendar.current.isDate(date, equalTo: displayedMonth, toGranularity: .month)
+                    let selected = Calendar.current.isDate(date, inSameDayAs: selectedDate)
+                    Button {
+                        onSelect(date)
+                    } label: {
+                        Text(date.formatted(.dateTime.day()))
+                            .font(.custom(serif, size: 12))
+                            .fontWeight(selected ? .semibold : .regular)
+                            .frame(width: 24, height: 23)
+                            .overlay(alignment: .bottom) {
+                                if selected { Rectangle().frame(height: 1) }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(inMonth ? 1 : 0.25)
+                }
+            }
+        }
+    }
+
+    private var columns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
+
+    private var weekdayLabels: [String] {
+        let calendar = Calendar.current
+        let labels = calendar.veryShortStandaloneWeekdaySymbols
+        let first = max(0, calendar.firstWeekday - 1)
+        return Array(labels[first...] + labels[..<first])
+    }
+
+    private var monthDates: [Date] {
+        let calendar = Calendar.current
+        guard let month = calendar.dateInterval(of: .month, for: displayedMonth) else { return [] }
+        let leading = (calendar.component(.weekday, from: month.start) - calendar.firstWeekday + 7) % 7
+        let start = calendar.date(byAdding: .day, value: -leading, to: month.start) ?? month.start
+        return (0..<42).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
+    }
+
+    private func moveMonth(_ amount: Int) {
+        guard let date = Calendar.current.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
+        displayedMonth = Calendar.current.dateInterval(of: .month, for: date)?.start ?? date
     }
 }
