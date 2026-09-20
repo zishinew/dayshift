@@ -448,6 +448,7 @@ struct ContentView: View {
     }
 }
 
+@MainActor
 private struct TaskRow: View {
     private enum DetailEditor: Equatable { case date, priority, repeatRule }
 
@@ -705,6 +706,7 @@ private struct SubtleHover: ViewModifier {
     }
 }
 
+@MainActor
 private struct CompactCalendar: View {
     @Environment(AppearanceSettings.self) private var appearance
     let selectedDate: Date
