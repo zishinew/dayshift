@@ -140,6 +140,7 @@ struct ContentView: View {
             .font(.custom(serif, size: 15))
             .fontWeight(active ? .semibold : .regular)
             .buttonStyle(.plain)
+            .modifier(SubtleHover())
             .opacity(active ? 1 : 0.5)
             .animation(motion, value: active)
     }
@@ -231,12 +232,14 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 HStack {
                     Button("←") { moveMonth(by: -1) }
+                        .modifier(SubtleHover())
                     Spacer()
                     Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
                         .font(.custom(serif, size: 20))
                         .contentTransition(.numericText())
                     Spacer()
                     Button("→") { moveMonth(by: 1) }
+                        .modifier(SubtleHover())
                 }
                 .font(.custom(serif, size: 17))
                 .buttonStyle(.plain)
@@ -322,6 +325,7 @@ struct ContentView: View {
             }
         }
         .buttonStyle(.plain)
+        .modifier(SubtleHover())
         .animation(motion, value: selected)
     }
 
@@ -463,6 +467,7 @@ private struct TaskRow: View {
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(.plain)
+                .modifier(SubtleHover())
                 .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
                 .padding(.top, 2)
             }
@@ -490,6 +495,7 @@ private struct TaskRow: View {
                         .contentShape(Rectangle())
                         .onTapGesture(perform: beginEditing)
                         .help("click to rename")
+                        .modifier(SubtleHover())
                         .transition(.opacity)
                 }
 
@@ -546,6 +552,7 @@ private struct TaskRow: View {
             }
         }
         .buttonStyle(.plain)
+        .modifier(SubtleHover())
         .foregroundStyle(detailEditor == editor ? Color.black : Color.secondary)
     }
 
@@ -596,6 +603,7 @@ private struct TaskRow: View {
             .padding(.vertical, 5)
         }
         .buttonStyle(.plain)
+        .modifier(SubtleHover())
     }
 
     private var repeatChoices: [(label: String, rule: RepeatRule?)] {
@@ -673,6 +681,19 @@ private struct DetailPanel: ViewModifier {
     }
 }
 
+private struct SubtleHover: ViewModifier {
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isHovered ? 1.025 : 1)
+            .animation(.easeOut(duration: 0.12), value: isHovered)
+            .onHover { hovering in
+                isHovered = hovering
+            }
+    }
+}
+
 private struct CompactCalendar: View {
     let selectedDate: Date
     let serif: String
@@ -691,11 +712,13 @@ private struct CompactCalendar: View {
         VStack(spacing: 10) {
             HStack {
                 Button("←") { moveMonth(-1) }
+                    .modifier(SubtleHover())
                 Spacer()
                 Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
                     .font(.custom(serif, size: 14))
                 Spacer()
                 Button("→") { moveMonth(1) }
+                    .modifier(SubtleHover())
             }
             .buttonStyle(.plain)
 
@@ -721,6 +744,7 @@ private struct CompactCalendar: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .modifier(SubtleHover())
                     .opacity(inMonth ? 1 : 0.25)
                 }
             }
