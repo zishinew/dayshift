@@ -67,31 +67,59 @@ struct ContentView: View {
     }
 
     private var classPanel: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
             Text("classes")
                 .font(.custom(serif, size: 16))
+                .padding(.bottom, 18)
 
             if store.classes.isEmpty {
-                Text("none")
+                Text("no classes")
                     .font(.custom(serif, size: 13))
                     .foregroundStyle(.secondary)
                     .transition(.opacity)
             } else {
                 ForEach(store.classes.sorted { $0.code < $1.code }) { item in
-                    Text(item.code.lowercased())
-                        .font(.custom(serif, size: 14))
+                    classRow(item)
+                        .padding(.bottom, 17)
                         .transition(.opacity.combined(with: .move(edge: .trailing)))
                 }
             }
 
             Spacer(minLength: 0)
         }
-        .frame(width: 150, alignment: .leading)
+        .frame(width: 190, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.top, 32)
-        .padding(.leading, 20)
+        .padding(.leading, 24)
         .padding(.trailing, 38)
         .animation(motion, value: store.classes)
+        .animation(motion, value: store.tasks)
+    }
+
+    private func classRow(_ item: ClassItem) -> some View {
+        let tasks = store.tasks.filter {
+            !$0.isComplete
+                && $0.dueDate >= today
+                && $0.classCode?.caseInsensitiveCompare(item.code) == .orderedSame
+        }
+        let nextTask = tasks.min { $0.dueDate < $1.dueDate }
+
+        return VStack(alignment: .leading, spacing: 3) {
+            Text(item.code.lowercased())
+                .font(.custom(serif, size: 15))
+
+            Text(classSummary(taskCount: tasks.count, nextTask: nextTask))
+                .font(.custom(serif, size: 12))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+        }
+    }
+
+    private func classSummary(taskCount: Int, nextTask: TaskItem?) -> String {
+        let count = taskCount == 1 ? "1 task" : "\(taskCount) tasks"
+        guard let nextTask else { return count }
+        let date = nextTask.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).lowercased()
+        return "\(count)  ·  next \(date)"
     }
 
     private var topToggle: some View {
