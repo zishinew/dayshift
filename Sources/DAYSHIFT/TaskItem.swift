@@ -13,14 +13,36 @@ enum RepeatUnit: String, Codable, CaseIterable {
 struct RepeatRule: Codable, Hashable, Equatable {
     var interval: Int
     var unit: RepeatUnit
+    var weekday: Int?
+
+    init(interval: Int, unit: RepeatUnit, weekday: Int? = nil) {
+        self.interval = interval
+        self.unit = unit
+        self.weekday = weekday
+    }
 
     var label: String {
+        if let weekday {
+            let names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+            let weekdayName = names[max(1, min(7, weekday)) - 1]
+            if interval == 2 { return "every other \(weekdayName)" }
+            if interval == 1 { return "every \(weekdayName)" }
+            return "every \(interval) weeks on \(weekdayName)"
+        }
         let unitName = interval == 1 ? unit.rawValue : unit.rawValue + "s"
         return "every \(interval) \(unitName)"
     }
 
     func nextDate(after date: Date, calendar: Calendar = .current) -> Date {
-        calendar.date(byAdding: unit == .day ? .day : unit == .week ? .weekOfYear : .month, value: interval, to: date) ?? date
+        if let weekday {
+            let currentWeekday = calendar.component(.weekday, from: date)
+            var daysUntilWeekday = (weekday - currentWeekday + 7) % 7
+            if daysUntilWeekday == 0 {
+                daysUntilWeekday = 7 * max(1, interval)
+            }
+            return calendar.date(byAdding: .day, value: daysUntilWeekday, to: date) ?? date
+        }
+        return calendar.date(byAdding: unit == .day ? .day : unit == .week ? .weekOfYear : .month, value: interval, to: date) ?? date
     }
 }
 

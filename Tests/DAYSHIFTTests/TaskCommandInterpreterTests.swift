@@ -102,4 +102,48 @@ final class TaskCommandInterpreterTests: XCTestCase {
             .repeatTask(query: "quiz", rule: RepeatRule(interval: 2, unit: .week))
         )
     }
+
+    func testNaturalWeekdayRepeatCommands() {
+        let interpreter = TaskCommandInterpreter()
+        let expected = TaskCommand.repeatTask(
+            query: "math237 quiz",
+            rule: RepeatRule(interval: 2, unit: .week, weekday: 3)
+        )
+
+        XCTAssertEqual(interpreter.interpret("make math237 quiz repeat every other tuesday", now: now), expected)
+        XCTAssertEqual(interpreter.interpret("please repeat the math237 quiz every second tue", now: now), expected)
+        XCTAssertEqual(interpreter.interpret("could you set math237 quiz to recur every 2 weeks on tuesdays?", now: now), expected)
+        XCTAssertEqual(interpreter.interpret("math237 quiz should repeat every other tues", now: now), expected)
+    }
+
+    func testStopRepeatingCommands() {
+        let interpreter = TaskCommandInterpreter()
+        XCTAssertEqual(interpreter.interpret("stop repeating the math237 quiz", now: now), .stopRepeating("math237 quiz"))
+        XCTAssertEqual(interpreter.interpret("make math237 quiz stop recurring", now: now), .stopRepeating("math237 quiz"))
+        XCTAssertEqual(interpreter.interpret("don't repeat math237 quiz anymore", now: now), .stopRepeating("math237 quiz"))
+    }
+
+    func testConversationalCommandWrappers() {
+        let interpreter = TaskCommandInterpreter()
+
+        XCTAssertEqual(interpreter.interpret("could you please get rid of the quiz?", now: now), .delete("quiz"))
+        XCTAssertEqual(interpreter.interpret("I finished my chemistry homework", now: now), .complete("chemistry homework"))
+        XCTAssertEqual(interpreter.interpret("would you move the quiz from Tuesday to Friday please", now: now).rescheduleQuery, "quiz")
+        XCTAssertEqual(interpreter.interpret("make the lab important", now: now), .setPriority(query: "lab", priority: .high))
+        XCTAssertEqual(interpreter.interpret("the essay should be low priority", now: now), .setPriority(query: "essay", priority: .low))
+    }
+
+    func testCommonCommandTyposAreCorrected() {
+        let interpreter = TaskCommandInterpreter()
+        XCTAssertEqual(interpreter.interpret("set prioirty of quiz to high", now: now), .setPriority(query: "quiz", priority: .high))
+        XCTAssertEqual(interpreter.interpret("reapeat quiz every alternate tuesday", now: now), .repeatTask(query: "quiz", rule: RepeatRule(interval: 2, unit: .week, weekday: 3)))
+        XCTAssertEqual(interpreter.interpret("rescheduel quiz to tommorow", now: now).rescheduleQuery, "quiz")
+    }
+}
+
+private extension TaskCommand {
+    var rescheduleQuery: String? {
+        guard case .reschedule(let query, _) = self else { return nil }
+        return query
+    }
 }

@@ -4,6 +4,7 @@ enum TaskCommand: Equatable {
     case add(ParsedTask)
     case addClasses([String])
     case repeatTask(query: String, rule: RepeatRule)
+    case stopRepeating(String)
     case complete(String)
     case reopen(String)
     case delete(String)
@@ -24,6 +25,7 @@ enum TaskCommand: Equatable {
             "Add “\(task.title)” · \(task.dueDate.formatted(date: .abbreviated, time: hasTime(task.dueDate) ? .shortened : .omitted)) · \(task.priority.rawValue)\(task.repeatRule.map { " · \($0.label)" } ?? "")"
         case .addClasses(let codes): "Add \(codes.map { $0.lowercased() }.joined(separator: ", "))"
         case .repeatTask(let query, let rule): "Repeat “\(query)” \(rule.label)"
+        case .stopRepeating(let query): "Stop repeating “\(query)”"
         case .complete(let query): "Complete “\(query)”"
         case .reopen(let query): "Reopen “\(query)”"
         case .delete(let query): "Delete “\(query)”"
@@ -55,7 +57,8 @@ struct TaskCommandInterpreter {
     }
 
     func interpret(_ input: String, now: Date = Date()) -> TaskCommand {
-        let value = taskParser.normalizingWeekdays(in: input.trimmingCharacters(in: .whitespacesAndNewlines))
+        let normalized = taskParser.normalizingLanguage(in: input.trimmingCharacters(in: .whitespacesAndNewlines))
+        let value = strippingConversationWrapper(from: normalized)
         let lower = value.lowercased()
 
         switch lower {
@@ -73,12 +76,24 @@ struct TaskCommandInterpreter {
             if !codes.isEmpty { return .addClasses(codes) }
         }
 
-        if let groups = captures(#"^repeat\s+(.+?)\s+every\s+(?:(\d+)\s+)?(day|days|week|weeks|month|months|weekday|weekdays)$"#, in: value) {
-            let interval = Int(groups[1]) ?? 1
-            let unitText = groups[2].lowercased()
-            let isWeekday = unitText.hasPrefix("weekday")
-            let unit: RepeatUnit = isWeekday ? .week : unitText.hasPrefix("day") ? .day : unitText.hasPrefix("week") ? .week : .month
-            return .repeatTask(query: cleanTarget(groups[0]), rule: RepeatRule(interval: isWeekday ? 1 : interval, unit: unit))
+        if let groups = captures(#"^(?:stop|cancel)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+from\s+(?:repeating|recurring)$"#, in: value) {
+            return .stopRepeating(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^stop\s+repeating\s+(.+)$"#, in: value) {
+            return .stopRepeating(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^make\s+(.+?)\s+stop\s+(?:repeating|recurring)$"#, in: value) {
+            return .stopRepeating(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^(?:do\s+not|don't)\s+repeat\s+(.+?)(?:\s+anymore)?$"#, in: value) {
+            return .stopRepeating(cleanTarget(groups[0]))
+        }
+
+        if let repeatCommand = repeatCommand(in: value) {
+            return repeatCommand
         }
 
         if let groups = captures(#"^(?:set\s+)?(?:the\s+)?priority\s+(?:of|for)\s+(.+?)\s+(?:to\s+)?(high|medium|low)$"#, in: value),
@@ -101,6 +116,20 @@ struct TaskCommandInterpreter {
             return .setPriority(query: cleanTarget(groups[0]), priority: priority)
         }
 
+        if let groups = captures(#"^(?:mark|make|set)\s+(.+?)\s+(?:as\s+)?(?:urgent|important|critical)$"#, in: value) {
+            return .setPriority(query: cleanTarget(groups[0]), priority: .high)
+        }
+
+        if let groups = captures(#"^(.+?)\s+(?:should\s+be|is)\s+(high|medium|low)(?:\s+priority)?$"#, in: value),
+           let priority = TaskPriority(rawValue: groups[1].capitalized) {
+            return .setPriority(query: cleanTarget(groups[0]), priority: priority)
+        }
+
+        if let groups = captures(#"^(raise|increase|lower|decrease)\s+(?:the\s+)?priority\s+(?:of|for)\s+(.+)$"#, in: value) {
+            let priority: TaskPriority = ["raise", "increase"].contains(groups[0].lowercased()) ? .high : .low
+            return .setPriority(query: cleanTarget(groups[1]), priority: priority)
+        }
+
         if let groups = captures(#"^(?:rename|change\s+name\s+of)\s+(.+?)\s+to\s+(.+)$"#, in: value) {
             return .rename(query: cleanTarget(groups[0]), title: groups[1])
         }
@@ -109,7 +138,11 @@ struct TaskCommandInterpreter {
             return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
-        if let groups = captures(#"^(?:move|reschedule|push(?:\s+back)?|postpone|defer|schedule)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+(?:to|for|until)\s+(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:move|reschedule|push(?:\s+back)?|postpone|defer)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+from\s+.+?\s+(?:to|until)\s+(.+)$"#, in: value) {
+            return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
+        }
+
+        if let groups = captures(#"^(?:move|reschedule|push(?:\s+back)?|postpone|defer|schedule|put)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+(?:to|for|until|on)\s+(.+)$"#, in: value) {
             return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
@@ -117,7 +150,11 @@ struct TaskCommandInterpreter {
             return .reschedule(query: cleanTarget(groups[0]), date: taskParser.parse(groups[1], now: now).dueDate)
         }
 
-        if let groups = captures(#"^(?:complete|finish|check\s+off|tick\s+off)\s+(?:the\s+)?(?:task\s+)?(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:complete|finish|finished|check\s+off|tick\s+off|mark\s+off)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+)$"#, in: value) {
+            return .complete(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^i(?:'ve|\s+have)?\s+(?:finished|completed|done)\s+(.+)$"#, in: value) {
             return .complete(cleanTarget(groups[0]))
         }
 
@@ -125,7 +162,7 @@ struct TaskCommandInterpreter {
             return .complete(cleanTarget(groups[0]))
         }
 
-        if let groups = captures(#"^(.+?)\s+is\s+(?:done|complete|completed)$"#, in: value) {
+        if let groups = captures(#"^(.+?)\s+(?:is|was|has\s+been)\s+(?:done|finished|complete|completed)$"#, in: value) {
             return .complete(cleanTarget(groups[0]))
         }
 
@@ -137,11 +174,15 @@ struct TaskCommandInterpreter {
             return .complete(cleanTarget(groups[0]))
         }
 
-        if let groups = captures(#"^(?:reopen|uncomplete|uncheck|undo)\s+(?:task\s+)?(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:reopen|uncomplete|uncheck|restore|mark\s+unfinished|mark\s+incomplete)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+)$"#, in: value) {
             return .reopen(cleanTarget(groups[0]))
         }
 
-        if let groups = captures(#"^(?:delete|remove|cancel)\s+(?:task\s+)?(.+)$"#, in: value) {
+        if let groups = captures(#"^(?:delete|remove|cancel|erase|drop|get\s+rid\s+of)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+)$"#, in: value) {
+            return .delete(cleanTarget(groups[0]))
+        }
+
+        if let groups = captures(#"^i\s+(?:do\s+not|don't)\s+need\s+(.+?)(?:\s+anymore)?$"#, in: value) {
             return .delete(cleanTarget(groups[0]))
         }
 
@@ -164,7 +205,36 @@ struct TaskCommandInterpreter {
         target = replacing(#"\s+(?:(?:next|this)\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tomorrow|tonight)\b.*$"#, in: target)
         target = replacing(#"\s+at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b.*$"#, in: target)
         target = replacing(#"\s+as$"#, in: target)
-        return target.trimmingCharacters(in: .whitespacesAndNewlines)
+        return target.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+    }
+
+    private func strippingConversationWrapper(from input: String) -> String {
+        var value = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        value = replacing(#"^\s*(?:(?:please|hey|okay|ok)\s*[,.]?\s*)+"#, in: value)
+        value = replacing(#"^\s*(?:can|could|would|will)\s+(?:you|we)\s+(?:please\s+)?"#, in: value)
+        value = replacing(#"^\s*i(?:'d|\s+would)?\s+like\s+(?:you\s+)?to\s+"#, in: value)
+        value = replacing(#"^\s*i\s+want\s+(?:you\s+)?to\s+"#, in: value)
+        value = replacing(#"\s*[,!.?]?\s+please\s*[!.?]*\s*$"#, in: value)
+        return value.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
+    }
+
+    private func repeatCommand(in value: String) -> TaskCommand? {
+        let patterns = [
+            #"^(?:repeat|recur)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+((?:every|each)\s+.+|(?:daily|weekly|monthly|biweekly|fortnightly)(?:\s+on\s+.+)?)$"#,
+            #"^(?:make|have)\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+(?:repeat|recur|recurring)\s+(.+)$"#,
+            #"^set\s+(?:the\s+|my\s+)?(?:task\s+)?(.+?)\s+to\s+(?:repeat|recur)\s+(.+)$"#,
+            #"^(.+?)\s+(?:should|needs?\s+to|has\s+to|must)\s+(?:repeat|recur)\s+(.+)$"#
+        ]
+
+        for pattern in patterns {
+            guard let groups = captures(pattern, in: value), groups.count == 2 else { continue }
+            var recurrence = groups[1]
+            recurrence = recurrence.replacingOccurrences(of: #"^on\s+"#, with: "every ", options: [.regularExpression, .caseInsensitive])
+            if let rule = taskParser.repeatRule(in: recurrence) {
+                return .repeatTask(query: cleanTarget(groups[0]), rule: rule)
+            }
+        }
+        return nil
     }
 
     private func replacing(_ pattern: String, in value: String) -> String {
@@ -175,8 +245,9 @@ struct TaskCommandInterpreter {
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
               let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)) else { return nil }
 
-        return (1..<match.numberOfRanges).compactMap { index in
-            guard let range = Range(match.range(at: index), in: value) else { return nil }
+        return (1..<match.numberOfRanges).map { index in
+            guard match.range(at: index).location != NSNotFound,
+                  let range = Range(match.range(at: index), in: value) else { return "" }
             return String(value[range]).trimmingCharacters(in: .whitespacesAndNewlines)
         }
     }

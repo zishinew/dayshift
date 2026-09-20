@@ -177,6 +177,17 @@ final class TaskStore {
         return title
     }
 
+    @discardableResult
+    func clearRepeat(matching query: String) -> String? {
+        guard let index = matchingIndex(for: query) else { return nil }
+        guard tasks[index].repeatRule != nil else { return tasks[index].title }
+        recordMutation()
+        tasks[index].repeatRule = nil
+        let title = tasks[index].title
+        save()
+        return title
+    }
+
     func clearCompleted() -> Int {
         let count = tasks.filter(\.isComplete).count
         guard count > 0 else { return 0 }

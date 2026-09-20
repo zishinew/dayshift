@@ -55,6 +55,24 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testCompletingWeekdayRepeatCreatesTheCorrectOccurrence() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let tuesday = ISO8601DateFormatter().date(from: "2026-09-22T16:30:00Z")!
+        let rule = RepeatRule(interval: 2, unit: .week, weekday: 3)
+        let store = makeStore()
+        store.add(ParsedTask(title: "Math237 quiz", dueDate: tuesday, priority: .medium, classCode: "MATH237", repeatRule: rule))
+
+        XCTAssertEqual(store.setCompletion(matching: "math237 quiz", to: true), "Math237 quiz")
+        let next = store.tasks.first { !$0.isComplete }
+        XCTAssertEqual(next?.repeatRule, rule)
+        XCTAssertEqual(next.map { calendar.dateComponents([.day], from: tuesday, to: $0.dueDate).day }, 14)
+
+        XCTAssertEqual(store.clearRepeat(matching: "math237 quiz"), "Math237 quiz")
+        XCTAssertNil(store.tasks.first { !$0.isComplete }?.repeatRule)
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
