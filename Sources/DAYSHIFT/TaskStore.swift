@@ -213,9 +213,18 @@ final class TaskStore {
         tasks
             .filter { calendar.isDate($0.dueDate, inSameDayAs: date) }
             .sorted {
-                if $0.isComplete != $1.isComplete { return !$0.isComplete }
                 if $0.priority != $1.priority { return rank($0.priority) < rank($1.priority) }
                 return $0.dueDate < $1.dueDate
+            }
+    }
+
+    func tasks(after date: Date, calendar: Calendar = .current) -> [TaskItem] {
+        let startOfNextDay = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: date)) ?? date
+        return tasks
+            .filter { $0.dueDate >= startOfNextDay }
+            .sorted {
+                if $0.dueDate != $1.dueDate { return $0.dueDate < $1.dueDate }
+                return rank($0.priority) < rank($1.priority)
             }
     }
 

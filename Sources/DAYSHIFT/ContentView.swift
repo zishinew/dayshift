@@ -16,7 +16,10 @@ struct ContentView: View {
     private let serif = "Times New Roman"
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
 
-    private var dayTasks: [TaskItem] { store.tasks(on: selectedDate) }
+    private var today: Date { Calendar.current.startOfDay(for: Date()) }
+    private var todayTasks: [TaskItem] { store.tasks(on: today) }
+    private var futureTasks: [TaskItem] { store.tasks(after: today) }
+    private var agendaTasks: [TaskItem] { todayTasks + futureTasks }
     private var classSuggestion: ClassItem? { store.suggestedClass(for: input) }
 
     var body: some View {
@@ -116,18 +119,37 @@ struct ContentView: View {
     private var todoPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
+                Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
                     .font(.custom(serif, size: 22))
-                .padding(.bottom, 22)
+                    .padding(.bottom, 22)
 
-                if dayTasks.isEmpty {
-                    Text("nothing scheduled")
+                if todayTasks.isEmpty {
+                    Text("no todos")
                         .font(.custom(serif, size: 15))
                         .foregroundStyle(.secondary)
                         .transition(.opacity)
                 } else {
-                    ForEach(dayTasks) { task in
-                        TaskRow(task: task, serif: serif) {
+                    ForEach(todayTasks) { task in
+                        TaskRow(task: task, serif: serif, showsDueDate: false) {
+                            withAnimation(motion) { store.toggle(task) }
+                        }
+                        .transition(.opacity)
+                    }
+                }
+
+                Text("upcoming")
+                    .font(.custom(serif, size: 14))
+                    .padding(.top, 34)
+                    .padding(.bottom, 12)
+
+                if futureTasks.isEmpty {
+                    Text("nothing upcoming")
+                        .font(.custom(serif, size: 12))
+                        .foregroundStyle(.secondary)
+                        .transition(.opacity)
+                } else {
+                    ForEach(futureTasks) { task in
+                        TaskRow(task: task, serif: serif, showsDueDate: true) {
                             withAnimation(motion) { store.toggle(task) }
                         }
                         .transition(.opacity)
@@ -139,7 +161,7 @@ struct ContentView: View {
             .padding(.top, 30)
             .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .topLeading)
-            .animation(motion, value: dayTasks)
+            .animation(motion, value: agendaTasks)
         }
     }
 
@@ -346,6 +368,7 @@ struct ContentView: View {
 private struct TaskRow: View {
     let task: TaskItem
     let serif: String
+    let showsDueDate: Bool
     let onToggle: () -> Void
 
     var body: some View {
@@ -373,8 +396,9 @@ private struct TaskRow: View {
     private var metadata: String {
         let calendar = Calendar.current
         let time = calendar.component(.hour, from: task.dueDate) == 0 && calendar.component(.minute, from: task.dueDate) == 0 ? "no time" : task.dueDate.formatted(date: .omitted, time: .shortened)
+        let datePart = showsDueDate ? task.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).lowercased() + "  ·  " : ""
         let classPart = task.classCode.map { "  ·  \($0.lowercased())" } ?? ""
         let repeatPart = task.repeatRule.map { "  ·  \($0.label)" } ?? ""
-        return "\(time)  ·  \(task.priority.rawValue)\(classPart)\(repeatPart)"
+        return "\(datePart)\(time)  ·  \(task.priority.rawValue)\(classPart)\(repeatPart)"
     }
 }

@@ -39,6 +39,22 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testUpcomingTasksAreReturnedInDateOrder() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = Date(timeIntervalSince1970: 1_700_006_400)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+        let nextWeek = calendar.date(byAdding: .day, value: 7, to: today)!
+        let store = makeStore()
+
+        store.add(ParsedTask(title: "Next week", dueDate: nextWeek, priority: .medium, classCode: nil, repeatRule: nil))
+        store.add(ParsedTask(title: "Tomorrow", dueDate: tomorrow, priority: .medium, classCode: nil, repeatRule: nil))
+        store.add(ParsedTask(title: "Today", dueDate: today, priority: .medium, classCode: nil, repeatRule: nil))
+
+        XCTAssertEqual(store.tasks(after: today, calendar: calendar).map(\.title), ["Tomorrow", "Next week"])
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
