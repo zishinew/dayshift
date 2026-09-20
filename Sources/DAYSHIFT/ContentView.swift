@@ -507,7 +507,7 @@ private struct TaskRow: View {
             }
 
             detailSeparator
-            detailButton(task.repeatRule?.label ?? "repeat", editor: .repeatRule)
+            detailButton(repeatLabel, editor: .repeatRule)
         }
         .font(.custom(serif, size: 13))
         .foregroundStyle(.tertiary)
@@ -552,7 +552,7 @@ private struct TaskRow: View {
         case .repeatRule:
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(repeatChoices.enumerated()), id: \.offset) { _, choice in
-                    detailChoice(choice.label, selected: task.repeatRule == choice.rule) {
+                    detailChoice(choice.label, selected: repeatChoiceIsSelected(choice.rule)) {
                         onRepeatChange(choice.rule)
                         detailEditor = nil
                     }
@@ -583,12 +583,28 @@ private struct TaskRow: View {
         return [
             ("does not repeat", nil),
             ("every day", RepeatRule(interval: 1, unit: .day)),
-            ("every week", RepeatRule(interval: 1, unit: .week)),
-            ("every other week", RepeatRule(interval: 2, unit: .week)),
-            ("every month", RepeatRule(interval: 1, unit: .month)),
             ("every \(weekdayName)", RepeatRule(interval: 1, unit: .week, weekday: weekday)),
-            ("every other \(weekdayName)", RepeatRule(interval: 2, unit: .week, weekday: weekday))
+            ("every other \(weekdayName)", RepeatRule(interval: 2, unit: .week, weekday: weekday)),
+            ("every month", RepeatRule(interval: 1, unit: .month))
         ]
+    }
+
+    private var repeatLabel: String {
+        guard let rule = task.repeatRule else { return "repeat" }
+        guard rule.unit == .week, rule.weekday == nil else { return rule.label }
+        let weekday = Calendar.current.component(.weekday, from: task.dueDate)
+        let name = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"][weekday - 1]
+        if rule.interval == 1 { return "every \(name)" }
+        if rule.interval == 2 { return "every other \(name)" }
+        return rule.label
+    }
+
+    private func repeatChoiceIsSelected(_ choice: RepeatRule?) -> Bool {
+        if task.repeatRule == choice { return true }
+        guard let current = task.repeatRule, let choice,
+              current.unit == .week, current.weekday == nil,
+              choice.unit == .week, choice.interval == current.interval else { return false }
+        return choice.weekday == Calendar.current.component(.weekday, from: task.dueDate)
     }
 
     private func beginEditing() {
