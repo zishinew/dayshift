@@ -372,7 +372,7 @@ private struct TaskRow: View {
     let onToggle: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Button(action: onToggle) {
                 Image(systemName: task.isComplete ? "checkmark.square" : "square")
                     .font(.system(size: 13, weight: .regular))
@@ -381,24 +381,43 @@ private struct TaskRow: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(task.isComplete ? "Mark incomplete" : "Mark complete")
-            Text(task.title.lowercased())
-                .font(.custom(serif, size: 16))
-                .strikethrough(task.isComplete)
-                .foregroundStyle(task.isComplete ? .secondary : .primary)
+            .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(task.title.lowercased())
+                    .font(.custom(serif, size: 16))
+                    .strikethrough(task.isComplete)
+                    .foregroundStyle(task.isComplete ? .secondary : .primary)
+
+                Text(metadata.lowercased())
+                    .font(.custom(serif, size: 11))
+                    .foregroundStyle(.tertiary)
+            }
+
             Spacer()
-            Text(metadata.lowercased())
-                .font(.custom(serif, size: 10))
-                .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 9)
     }
 
     private var metadata: String {
         let calendar = Calendar.current
-        let time = calendar.component(.hour, from: task.dueDate) == 0 && calendar.component(.minute, from: task.dueDate) == 0 ? "no time" : task.dueDate.formatted(date: .omitted, time: .shortened)
-        let datePart = showsDueDate ? task.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()).lowercased() + "  ·  " : ""
-        let classPart = task.classCode.map { "  ·  \($0.lowercased())" } ?? ""
-        let repeatPart = task.repeatRule.map { "  ·  \($0.label)" } ?? ""
-        return "\(datePart)\(time)  ·  \(task.priority.rawValue)\(classPart)\(repeatPart)"
+        let hasTime = calendar.component(.hour, from: task.dueDate) != 0 || calendar.component(.minute, from: task.dueDate) != 0
+        var parts: [String] = []
+
+        if showsDueDate {
+            parts.append(task.dueDate.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+        }
+        if hasTime {
+            parts.append(task.dueDate.formatted(date: .omitted, time: .shortened))
+        }
+        parts.append(task.priority.rawValue)
+        if let classCode = task.classCode, !task.title.localizedCaseInsensitiveContains(classCode) {
+            parts.append(classCode)
+        }
+        if let repeatRule = task.repeatRule {
+            parts.append(repeatRule.label)
+        }
+
+        return parts.joined(separator: "  ·  ")
     }
 }
