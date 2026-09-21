@@ -29,6 +29,26 @@ final class WindowManager {
         }
     }
 
+    func hideScrollers() {
+        DispatchQueue.main.async { [weak self] in
+            guard let root = self?.window?.contentView else { return }
+            self?.hideScrollers(in: root)
+        }
+    }
+
+    private func hideScrollers(in view: NSView) {
+        if let scrollView = view as? NSScrollView {
+            scrollView.hasVerticalScroller = false
+            scrollView.hasHorizontalScroller = false
+            scrollView.verticalScroller?.isHidden = true
+            scrollView.horizontalScroller?.isHidden = true
+            scrollView.autohidesScrollers = true
+        }
+        for child in view.subviews {
+            hideScrollers(in: child)
+        }
+    }
+
 }
 
 struct WindowAccessor: NSViewRepresentable {
@@ -39,6 +59,47 @@ struct WindowAccessor: NSViewRepresentable {
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if let window { WindowManager.shared.attach(window) }
+        }
+    }
+}
+
+/// Keeps SwiftUI's paged scroll interaction while removing macOS's persistent
+/// scroller chrome from this intentionally bare calendar.
+struct ScrollIndicatorHider: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { AccessView() }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? AccessView)?.configureScrollViews()
+    }
+
+    private final class AccessView: NSView {
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            configureScrollViews()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            configureScrollViews()
+        }
+
+        func configureScrollViews() {
+            DispatchQueue.main.async { [weak self] in
+                guard let root = self?.window?.contentView else { return }
+                self?.hideScrollers(in: root)
+            }
+        }
+
+        private func hideScrollers(in view: NSView) {
+            if let scrollView = view as? NSScrollView {
+                scrollView.hasVerticalScroller = false
+                scrollView.hasHorizontalScroller = false
+                scrollView.verticalScroller?.isHidden = true
+                scrollView.horizontalScroller?.isHidden = true
+                scrollView.autohidesScrollers = true
+            }
+            for child in view.subviews {
+                hideScrollers(in: child)
+            }
         }
     }
 }

@@ -258,7 +258,10 @@ struct ContentView: View {
                 .scrollTargetLayout()
             }
             .scrollTargetBehavior(.paging)
+            .scrollIndicators(.hidden)
             .id(displayedMonth)
+            .background(ScrollIndicatorHider())
+            .onAppear { WindowManager.shared.hideScrollers() }
         }
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
