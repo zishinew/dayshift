@@ -131,14 +131,15 @@ struct ContentView: View {
             Spacer()
             HStack(spacing: 14) {
                 modeButton("todo", active: page == .todo) { withAnimation(motion) { page = .todo } }
-                Text("/").foregroundStyle(.secondary)
+                Text("/").foregroundStyle(appearance.textColor.opacity(0.5))
                 modeButton("calendar", active: page == .calendar) { withAnimation(motion) { page = .calendar } }
-                Text("/").foregroundStyle(.secondary)
+                Text("/").foregroundStyle(appearance.textColor.opacity(0.5))
                 modeButton("settings", active: page == .settings) { withAnimation(motion) { page = .settings } }
             }
             Spacer()
         }
         .frame(width: 280, height: 28)
+        .foregroundStyle(appearance.textColor)
     }
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {
@@ -146,6 +147,7 @@ struct ContentView: View {
             .font(.custom(serif, size: appearance.scaled(15)))
             .fontWeight(active ? .semibold : .regular)
             .buttonStyle(.plain)
+            .foregroundStyle(appearance.textColor)
             .modifier(SubtleHover())
             .opacity(active ? 1 : 0.5)
             .animation(motion, value: active)
