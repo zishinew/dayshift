@@ -11,12 +11,10 @@ struct ContentView: View {
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
-    @State private var calendarMoveDirection = 1
-    @State private var outgoingCalendarMonth: Date?
-    @State private var calendarSlideProgress: CGFloat = 1
     @State private var calendarTransitionID = UUID()
-    @State private var pendingCalendarMoves: [Int] = []
-    @State private var calendarIsAnimating = false
+    @State private var calendarDragOffset: CGFloat = 0
+    @State private var calendarSettlingDirection = 0
+    @State private var calendarViewportHeight: CGFloat = 700
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
@@ -24,7 +22,7 @@ struct ContentView: View {
     private var serif: String { appearance.fontName }
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
     private var calendarMotion: Animation? {
-        reduceMotion ? nil : .timingCurve(0.16, 1, 0.3, 1, duration: 0.62)
+        reduceMotion ? nil : .timingCurve(0.22, 0.88, 0.28, 1, duration: 0.46)
     }
 
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
@@ -258,21 +256,25 @@ struct ContentView: View {
     private var scrollingCalendarPage: some View {
         GeometryReader { proxy in
             ZStack {
-                if let outgoingCalendarMonth {
-                    calendarPageLayer(outgoingCalendarMonth)
-                        .offset(y: -CGFloat(calendarMoveDirection) * calendarSlideProgress * proxy.size.height)
-                        .allowsHitTesting(false)
-                }
-
+                calendarPageLayer(month(byAdding: -1, to: displayedMonth))
+                    .offset(y: calendarDragOffset - proxy.size.height)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
                 calendarPageLayer(displayedMonth)
-                    .offset(y: CGFloat(calendarMoveDirection) * (1 - calendarSlideProgress) * proxy.size.height)
+                    .offset(y: calendarDragOffset)
+                calendarPageLayer(month(byAdding: 1, to: displayedMonth))
+                    .offset(y: calendarDragOffset + proxy.size.height)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
             }
             .clipped()
             .background {
-                ScrollWheelPager { direction in
-                    moveMonth(by: direction)
+                ScrollWheelPager { event in
+                    handleCalendarGesture(event, pageHeight: proxy.size.height)
                 }
             }
+            .onAppear { calendarViewportHeight = proxy.size.height }
+            .onChange(of: proxy.size.height) { _, height in calendarViewportHeight = height }
         }
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
@@ -505,48 +507,78 @@ struct ContentView: View {
     private func moveMonth(by amount: Int) {
         let direction = amount >= 0 ? 1 : -1
 
-        if appearance.usesScrollingCalendar, calendarIsAnimating {
-            if pendingCalendarMoves.last == -direction {
-                pendingCalendarMoves.removeLast()
-            } else if pendingCalendarMoves.count < 12 {
-                pendingCalendarMoves.append(direction)
-            }
-            return
-        }
-
-        animateMonthMove(direction)
-    }
-
-    private func animateMonthMove(_ direction: Int) {
-        let calendar = Calendar.current
-        guard let date = calendar.date(byAdding: .month, value: direction, to: displayedMonth) else { return }
-
         if !appearance.usesScrollingCalendar {
             withAnimation(motion) {
-                displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
+                displayedMonth = month(byAdding: direction, to: displayedMonth)
             }
             return
         }
 
-        calendarIsAnimating = true
-        calendarMoveDirection = direction
-        outgoingCalendarMonth = displayedMonth
-        displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
-        calendarSlideProgress = 0
+        settleCalendar(in: direction, pageHeight: calendarViewportHeight)
+    }
+
+    private func handleCalendarGesture(_ event: ScrollWheelPager.GestureEvent, pageHeight: CGFloat) {
+        guard pageHeight > 0 else { return }
+
+        switch event {
+        case .began:
+            finishInterruptedCalendarSettlement()
+        case .changed(let delta):
+            calendarTransitionID = UUID()
+            calendarSettlingDirection = 0
+            calendarDragOffset += delta * 2.15
+
+            // Momentum is allowed to carry through more than one month. Each
+            // full-height crossing rebases the three visible pages seamlessly.
+            while calendarDragOffset <= -pageHeight {
+                displayedMonth = month(byAdding: 1, to: displayedMonth)
+                calendarDragOffset += pageHeight
+            }
+            while calendarDragOffset >= pageHeight {
+                displayedMonth = month(byAdding: -1, to: displayedMonth)
+                calendarDragOffset -= pageHeight
+            }
+        case .ended:
+            guard abs(calendarDragOffset) > 8 else {
+                withAnimation(calendarMotion) { calendarDragOffset = 0 }
+                return
+            }
+            settleCalendar(in: calendarDragOffset < 0 ? 1 : -1, pageHeight: pageHeight)
+        case .page(let direction):
+            finishInterruptedCalendarSettlement()
+            settleCalendar(in: direction, pageHeight: pageHeight)
+        }
+    }
+
+    private func settleCalendar(in direction: Int, pageHeight: CGFloat) {
         let transitionID = UUID()
         calendarTransitionID = transitionID
+        calendarSettlingDirection = direction
         withAnimation(calendarMotion) {
-            calendarSlideProgress = 1
+            calendarDragOffset = direction > 0 ? -pageHeight : pageHeight
         }
+
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 640_000_000)
+            try? await Task.sleep(nanoseconds: reduceMotion ? 1_000_000 : 480_000_000)
             guard calendarTransitionID == transitionID else { return }
-            outgoingCalendarMonth = nil
-            calendarIsAnimating = false
-            guard !pendingCalendarMoves.isEmpty else { return }
-            let nextDirection = pendingCalendarMoves.removeFirst()
-            animateMonthMove(nextDirection)
+            displayedMonth = month(byAdding: direction, to: displayedMonth)
+            calendarDragOffset = 0
+            calendarSettlingDirection = 0
         }
+    }
+
+    private func finishInterruptedCalendarSettlement() {
+        calendarTransitionID = UUID()
+        guard calendarSettlingDirection != 0 else { return }
+        displayedMonth = month(byAdding: calendarSettlingDirection, to: displayedMonth)
+        calendarDragOffset = 0
+        calendarSettlingDirection = 0
+    }
+
+    private func month(byAdding amount: Int, to date: Date) -> Date {
+        let calendar = Calendar.current
+        let shifted = calendar.date(byAdding: .month, value: amount, to: date) ?? date
+        return calendar.dateInterval(of: .month, for: shifted)?.start ?? shifted
     }
 
     private func mutationFeedback(_ title: String?, verb: String, query: String) -> String { title.map { "\(verb) “\($0)”." } ?? notFound(query) }

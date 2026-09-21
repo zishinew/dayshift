@@ -44,16 +44,23 @@ struct WindowAccessor: NSViewRepresentable {
 }
 
 struct ScrollWheelPager: NSViewRepresentable {
-    let onPage: (Int) -> Void
+    enum GestureEvent {
+        case began
+        case changed(CGFloat)
+        case ended
+        case page(Int)
+    }
+
+    let onGesture: (GestureEvent) -> Void
 
     func makeNSView(context: Context) -> NSView {
         let view = EventView()
-        view.onPage = onPage
+        view.onGesture = onGesture
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? EventView)?.onPage = onPage
+        (nsView as? EventView)?.onGesture = onGesture
     }
 
     static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
@@ -61,10 +68,11 @@ struct ScrollWheelPager: NSViewRepresentable {
     }
 
     private final class EventView: NSView {
-        var onPage: ((Int) -> Void)?
+        var onGesture: ((GestureEvent) -> Void)?
         private var monitor: Any?
-        private var accumulatedDelta: CGFloat = 0
         private var lastDiscreteEventTime: TimeInterval = 0
+        private var gestureIsActive = false
+        private var pendingEnd: DispatchWorkItem?
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -84,37 +92,43 @@ struct ScrollWheelPager: NSViewRepresentable {
                     return event
                 }
 
-                let phase = event.phase
-                let momentumPhase = event.momentumPhase
-                if phase.contains(.began) || momentumPhase.contains(.began) {
-                    self.accumulatedDelta = 0
-                }
-
                 if !event.hasPreciseScrollingDeltas {
                     let now = ProcessInfo.processInfo.systemUptime
-                    if abs(event.scrollingDeltaY) > 0.1, now - self.lastDiscreteEventTime >= 0.5 {
-                        self.onPage?(event.scrollingDeltaY < 0 ? 1 : -1)
+                    if abs(event.scrollingDeltaY) > 0.1, now - self.lastDiscreteEventTime >= 0.24 {
+                        self.onGesture?(.page(event.scrollingDeltaY < 0 ? 1 : -1))
                     }
                     self.lastDiscreteEventTime = now
                     return nil
                 }
 
-                self.accumulatedDelta += event.scrollingDeltaY
-                let threshold: CGFloat = 24
-                while abs(self.accumulatedDelta) >= threshold {
-                    let direction = self.accumulatedDelta < 0 ? 1 : -1
-                    self.onPage?(direction)
-                    self.accumulatedDelta += self.accumulatedDelta < 0 ? threshold : -threshold
+                self.pendingEnd?.cancel()
+                if !self.gestureIsActive {
+                    self.gestureIsActive = true
+                    self.onGesture?(.began)
                 }
+                self.onGesture?(.changed(event.scrollingDeltaY))
 
-                if (phase.contains(.ended) || phase.contains(.cancelled)), momentumPhase.isEmpty {
-                    self.accumulatedDelta = 0
+                let phaseFinished = event.phase.contains(.ended) || event.phase.contains(.cancelled)
+                let momentumFinished = event.momentumPhase.contains(.ended)
+                if phaseFinished || momentumFinished {
+                    // A momentum sequence can begin immediately after the finger
+                    // phase ends. The tiny debounce joins both into one gesture.
+                    let work = DispatchWorkItem { [weak self] in
+                        guard let self, self.gestureIsActive else { return }
+                        self.gestureIsActive = false
+                        self.onGesture?(.ended)
+                    }
+                    self.pendingEnd = work
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.055, execute: work)
                 }
                 return nil
             }
         }
 
         func removeMonitor() {
+            pendingEnd?.cancel()
+            pendingEnd = nil
+            gestureIsActive = false
             if let monitor {
                 NSEvent.removeMonitor(monitor)
                 self.monitor = nil
