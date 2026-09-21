@@ -65,6 +65,7 @@ struct ScrollWheelPager: NSViewRepresentable {
         private var monitor: Any?
         private var accumulatedDelta: CGFloat = 0
         private var pageTriggered = false
+        private var lastPageTime: TimeInterval = 0
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -85,14 +86,21 @@ struct ScrollWheelPager: NSViewRepresentable {
                 }
 
                 let phase = event.phase
+                let momentumPhase = event.momentumPhase
                 if phase.contains(.began) {
                     self.accumulatedDelta = 0
                     self.pageTriggered = false
                 }
 
+                // The initiating gesture changes one page. Momentum belongs to
+                // that same gesture and must not advance through more months.
+                if !momentumPhase.isEmpty {
+                    return nil
+                }
+
                 if phase.isEmpty {
                     if abs(event.scrollingDeltaY) > 0.1 {
-                        self.onPage?(event.scrollingDeltaY < 0 ? 1 : -1)
+                        self.triggerPage(event.scrollingDeltaY < 0 ? 1 : -1)
                     }
                     return nil
                 }
@@ -100,7 +108,7 @@ struct ScrollWheelPager: NSViewRepresentable {
                 self.accumulatedDelta += event.scrollingDeltaY
                 if !self.pageTriggered, abs(self.accumulatedDelta) >= 8 {
                     self.pageTriggered = true
-                    self.onPage?(self.accumulatedDelta < 0 ? 1 : -1)
+                    self.triggerPage(self.accumulatedDelta < 0 ? 1 : -1)
                 }
 
                 if phase.contains(.ended) || phase.contains(.cancelled) {
@@ -109,6 +117,13 @@ struct ScrollWheelPager: NSViewRepresentable {
                 }
                 return nil
             }
+        }
+
+        private func triggerPage(_ direction: Int) {
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - lastPageTime >= 0.38 else { return }
+            lastPageTime = now
+            onPage?(direction)
         }
 
         func removeMonitor() {

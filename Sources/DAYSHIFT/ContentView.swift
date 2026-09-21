@@ -18,6 +18,9 @@ struct ContentView: View {
     private let classPanelWidth: CGFloat = 252
     private var serif: String { appearance.fontName }
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
+    private var calendarMotion: Animation? {
+        reduceMotion ? nil : .timingCurve(0.22, 1, 0.36, 1, duration: 0.42)
+    }
 
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
     private var todayTasks: [TaskItem] { store.tasks(on: today) }
@@ -250,12 +253,12 @@ struct ContentView: View {
     private var scrollingCalendarPage: some View {
         ZStack {
             calendarMonth(displayedMonth)
-                .id(displayedMonth)
-                .transition(monthTransition)
                 .padding(.horizontal, 38)
                 .padding(.top, 30)
                 .padding(.bottom, 24)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .id(displayedMonth)
+                .transition(monthTransition)
         }
         .clipped()
         .background {
@@ -301,13 +304,13 @@ struct ContentView: View {
     private var monthTransition: AnyTransition {
         if calendarMoveDirection > 0 {
             return .asymmetric(
-                insertion: .move(edge: .bottom).combined(with: .opacity),
-                removal: .move(edge: .top).combined(with: .opacity)
+                insertion: .move(edge: .bottom),
+                removal: .move(edge: .top)
             )
         }
         return .asymmetric(
-            insertion: .move(edge: .top).combined(with: .opacity),
-            removal: .move(edge: .bottom).combined(with: .opacity)
+            insertion: .move(edge: .top),
+            removal: .move(edge: .bottom)
         )
     }
 
@@ -499,8 +502,8 @@ struct ContentView: View {
     private func moveMonth(by amount: Int) {
         let calendar = Calendar.current
         guard let date = calendar.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
-        withAnimation(motion) {
-            calendarMoveDirection = amount >= 0 ? 1 : -1
+        calendarMoveDirection = amount >= 0 ? 1 : -1
+        withAnimation(calendarMotion) {
             displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
         }
     }
