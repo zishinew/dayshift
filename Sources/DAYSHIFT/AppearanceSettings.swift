@@ -13,6 +13,7 @@ final class AppearanceSettings {
     var textSize: Double { didSet { save() } }
     var rowSpacing: Double { didSet { save() } }
     var showCommandHints: Bool { didSet { save() } }
+    var usesScrollingCalendar: Bool { didSet { save() } }
 
     init() {
         let defaults = UserDefaults.standard
@@ -22,6 +23,7 @@ final class AppearanceSettings {
         textSize = defaults.object(forKey: "textSize") == nil ? 18 : defaults.double(forKey: "textSize")
         rowSpacing = defaults.object(forKey: "rowSpacing") == nil ? 9 : defaults.double(forKey: "rowSpacing")
         showCommandHints = defaults.object(forKey: "showCommandHints") == nil ? true : defaults.bool(forKey: "showCommandHints")
+        usesScrollingCalendar = defaults.object(forKey: "usesScrollingCalendar") == nil ? true : defaults.bool(forKey: "usesScrollingCalendar")
     }
 
     func scaled(_ base: CGFloat) -> CGFloat {
@@ -35,6 +37,7 @@ final class AppearanceSettings {
         textSize = 18
         rowSpacing = 9
         showCommandHints = true
+        usesScrollingCalendar = true
     }
 
     private func save() {
@@ -43,6 +46,7 @@ final class AppearanceSettings {
         defaults.set(textSize, forKey: "textSize")
         defaults.set(rowSpacing, forKey: "rowSpacing")
         defaults.set(showCommandHints, forKey: "showCommandHints")
+        defaults.set(usesScrollingCalendar, forKey: "usesScrollingCalendar")
         defaults.set(colorData(textColor), forKey: "textColor")
         defaults.set(colorData(backgroundColor), forKey: "backgroundColor")
     }

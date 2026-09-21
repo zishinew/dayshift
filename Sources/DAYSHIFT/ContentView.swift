@@ -237,15 +237,57 @@ struct ContentView: View {
     }
 
     private var calendarPage: some View {
-        ScrollView {
-            LazyVStack(spacing: 52) {
-                ForEach(calendarMonths, id: \.self) { month in
-                    calendarMonth(month)
+        Group {
+            if appearance.usesScrollingCalendar {
+                scrollingCalendarPage
+            } else {
+                arrowCalendarPage
+            }
+        }
+    }
+
+    private var scrollingCalendarPage: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(calendarMonths, id: \.self) { month in
+                        calendarMonth(month)
+                            .frame(height: max(proxy.size.height, 520), alignment: .top)
+                    }
                 }
+                .scrollTargetLayout()
+            }
+            .scrollTargetBehavior(.paging)
+            .id(displayedMonth)
+        }
+        // The classes panel occupies fixed space on the right. Its matching
+        // leading inset keeps the calendar centered in the whole window.
+        .padding(.leading, classPanelWidth)
+    }
+
+    private var arrowCalendarPage: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                HStack {
+                    Button("←") { moveMonth(by: -1) }
+                        .modifier(SubtleHover())
+                    Spacer()
+                    Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
+                        .font(.custom(serif, size: appearance.scaled(20)))
+                    Spacer()
+                    Button("→") { moveMonth(by: 1) }
+                        .modifier(SubtleHover())
+                }
+                .font(.custom(serif, size: appearance.scaled(17)))
+                .buttonStyle(.plain)
+                .padding(.bottom, 24)
+
+                calendarWeekdayHeader
+                calendarDateGrid(for: displayedMonth)
             }
             .padding(.horizontal, 38)
             .padding(.top, 30)
-            .padding(.bottom, 60)
+            .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .top)
         }
         // The classes panel occupies fixed space on the right. Its matching
@@ -269,24 +311,31 @@ struct ContentView: View {
                 .font(.custom(serif, size: appearance.scaled(20)))
                 .padding(.bottom, 24)
 
-            LazyVGrid(columns: calendarColumns, spacing: 0) {
-                ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
-                    Text(weekday.lowercased())
-                        .font(.custom(serif, size: appearance.scaled(13)))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.bottom, 10)
-                }
-            }
-
-            LazyVGrid(columns: calendarColumns, spacing: 18) {
-                ForEach(monthDates(for: month), id: \.self) { date in
-                    calendarDay(date, in: month)
-                }
-            }
+            calendarWeekdayHeader
+            calendarDateGrid(for: month)
         }
         .frame(maxWidth: 1040, alignment: .center)
         .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private var calendarWeekdayHeader: some View {
+        LazyVGrid(columns: calendarColumns, spacing: 0) {
+            ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
+                Text(weekday.lowercased())
+                    .font(.custom(serif, size: appearance.scaled(13)))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.bottom, 10)
+            }
+        }
+    }
+
+    private func calendarDateGrid(for month: Date) -> some View {
+        LazyVGrid(columns: calendarColumns, spacing: 18) {
+            ForEach(monthDates(for: month), id: \.self) { date in
+                calendarDay(date, in: month)
+            }
+        }
     }
 
     private var weekdayLabels: [String] {

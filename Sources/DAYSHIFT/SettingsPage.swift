@@ -20,6 +20,12 @@ struct SettingsPage: View {
                 }
 
                 settingSection("behavior") {
+                    Toggle(isOn: Binding(get: { appearance.usesScrollingCalendar }, set: { appearance.usesScrollingCalendar = $0 })) {
+                        Text("scroll between months")
+                            .font(.custom(appearance.fontName, size: appearance.scaled(15)))
+                    }
+                    .toggleStyle(.checkbox)
+
                     Toggle(isOn: Binding(get: { appearance.showCommandHints }, set: { appearance.showCommandHints = $0 })) {
                         Text("show command hints")
                             .font(.custom(appearance.fontName, size: appearance.scaled(15)))
