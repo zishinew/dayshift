@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
+    @State private var calendarMoveDirection = 1
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
@@ -247,21 +248,20 @@ struct ContentView: View {
     }
 
     private var scrollingCalendarPage: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(calendarMonths, id: \.self) { month in
-                        calendarMonth(month)
-                            .frame(height: max(proxy.size.height, 520), alignment: .top)
-                    }
-                }
-                .scrollTargetLayout()
+        ZStack {
+            calendarMonth(displayedMonth)
+                .id(displayedMonth)
+                .transition(monthTransition)
+                .padding(.horizontal, 38)
+                .padding(.top, 30)
+                .padding(.bottom, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .clipped()
+        .background {
+            ScrollWheelPager { direction in
+                moveMonth(by: direction)
             }
-            .scrollTargetBehavior(.paging)
-            .scrollIndicators(.hidden)
-            .id(displayedMonth)
-            .background(ScrollIndicatorHider())
-            .onAppear { WindowManager.shared.hideScrollers() }
         }
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
@@ -269,30 +269,28 @@ struct ContentView: View {
     }
 
     private var arrowCalendarPage: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                HStack {
-                    Button("←") { moveMonth(by: -1) }
-                        .modifier(SubtleHover())
-                    Spacer()
-                    Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
-                        .font(.custom(serif, size: appearance.scaled(20)))
-                    Spacer()
-                    Button("→") { moveMonth(by: 1) }
-                        .modifier(SubtleHover())
-                }
-                .font(.custom(serif, size: appearance.scaled(17)))
-                .buttonStyle(.plain)
-                .padding(.bottom, 24)
-
-                calendarWeekdayHeader
-                calendarDateGrid(for: displayedMonth)
+        VStack(spacing: 0) {
+            HStack {
+                Button("←") { moveMonth(by: -1) }
+                    .modifier(SubtleHover())
+                Spacer()
+                Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
+                    .font(.custom(serif, size: appearance.scaled(20)))
+                Spacer()
+                Button("→") { moveMonth(by: 1) }
+                    .modifier(SubtleHover())
             }
-            .padding(.horizontal, 38)
-            .padding(.top, 30)
+            .font(.custom(serif, size: appearance.scaled(17)))
+            .buttonStyle(.plain)
             .padding(.bottom, 24)
-            .frame(maxWidth: .infinity, alignment: .top)
+
+            calendarWeekdayHeader
+            calendarDateGrid(for: displayedMonth)
         }
+        .padding(.horizontal, 38)
+        .padding(.top, 30)
+        .padding(.bottom, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
         .padding(.leading, classPanelWidth)
@@ -300,12 +298,17 @@ struct ContentView: View {
 
     private var calendarColumns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
 
-    private var calendarMonths: [Date] {
-        let calendar = Calendar.current
-        return (0..<36).compactMap { offset in
-            guard let date = calendar.date(byAdding: .month, value: offset, to: displayedMonth) else { return nil }
-            return calendar.dateInterval(of: .month, for: date)?.start
+    private var monthTransition: AnyTransition {
+        if calendarMoveDirection > 0 {
+            return .asymmetric(
+                insertion: .move(edge: .bottom).combined(with: .opacity),
+                removal: .move(edge: .top).combined(with: .opacity)
+            )
         }
+        return .asymmetric(
+            insertion: .move(edge: .top).combined(with: .opacity),
+            removal: .move(edge: .bottom).combined(with: .opacity)
+        )
     }
 
     private func calendarMonth(_ month: Date) -> some View {
@@ -497,6 +500,7 @@ struct ContentView: View {
         let calendar = Calendar.current
         guard let date = calendar.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
         withAnimation(motion) {
+            calendarMoveDirection = amount >= 0 ? 1 : -1
             displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
         }
     }

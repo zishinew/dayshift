@@ -29,26 +29,6 @@ final class WindowManager {
         }
     }
 
-    func hideScrollers() {
-        DispatchQueue.main.async { [weak self] in
-            guard let root = self?.window?.contentView else { return }
-            self?.hideScrollers(in: root)
-        }
-    }
-
-    private func hideScrollers(in view: NSView) {
-        if let scrollView = view as? NSScrollView {
-            scrollView.hasVerticalScroller = false
-            scrollView.hasHorizontalScroller = false
-            scrollView.verticalScroller?.isHidden = true
-            scrollView.horizontalScroller?.isHidden = true
-            scrollView.autohidesScrollers = true
-        }
-        for child in view.subviews {
-            hideScrollers(in: child)
-        }
-    }
-
 }
 
 struct WindowAccessor: NSViewRepresentable {
@@ -63,43 +43,83 @@ struct WindowAccessor: NSViewRepresentable {
     }
 }
 
-/// Keeps SwiftUI's paged scroll interaction while removing macOS's persistent
-/// scroller chrome from this intentionally bare calendar.
-struct ScrollIndicatorHider: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { AccessView() }
-    func updateNSView(_ nsView: NSView, context: Context) {
-        (nsView as? AccessView)?.configureScrollViews()
+struct ScrollWheelPager: NSViewRepresentable {
+    let onPage: (Int) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = EventView()
+        view.onPage = onPage
+        return view
     }
 
-    private final class AccessView: NSView {
-        override func viewDidMoveToSuperview() {
-            super.viewDidMoveToSuperview()
-            configureScrollViews()
-        }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? EventView)?.onPage = onPage
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        (nsView as? EventView)?.removeMonitor()
+    }
+
+    private final class EventView: NSView {
+        var onPage: ((Int) -> Void)?
+        private var monitor: Any?
+        private var accumulatedDelta: CGFloat = 0
+        private var pageTriggered = false
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            configureScrollViews()
-        }
-
-        func configureScrollViews() {
-            DispatchQueue.main.async { [weak self] in
-                guard let root = self?.window?.contentView else { return }
-                self?.hideScrollers(in: root)
+            if window == nil {
+                removeMonitor()
+            } else {
+                installMonitor()
             }
         }
 
-        private func hideScrollers(in view: NSView) {
-            if let scrollView = view as? NSScrollView {
-                scrollView.hasVerticalScroller = false
-                scrollView.hasHorizontalScroller = false
-                scrollView.verticalScroller?.isHidden = true
-                scrollView.horizontalScroller?.isHidden = true
-                scrollView.autohidesScrollers = true
+        private func installMonitor() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
+                guard let self,
+                      event.window === self.window,
+                      self.bounds.contains(self.convert(event.locationInWindow, from: nil)) else {
+                    return event
+                }
+
+                let phase = event.phase
+                if phase.contains(.began) {
+                    self.accumulatedDelta = 0
+                    self.pageTriggered = false
+                }
+
+                if phase.isEmpty {
+                    if abs(event.scrollingDeltaY) > 0.1 {
+                        self.onPage?(event.scrollingDeltaY < 0 ? 1 : -1)
+                    }
+                    return nil
+                }
+
+                self.accumulatedDelta += event.scrollingDeltaY
+                if !self.pageTriggered, abs(self.accumulatedDelta) >= 8 {
+                    self.pageTriggered = true
+                    self.onPage?(self.accumulatedDelta < 0 ? 1 : -1)
+                }
+
+                if phase.contains(.ended) || phase.contains(.cancelled) {
+                    self.accumulatedDelta = 0
+                    self.pageTriggered = false
+                }
+                return nil
             }
-            for child in view.subviews {
-                hideScrollers(in: child)
+        }
+
+        func removeMonitor() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
             }
+        }
+
+        deinit {
+            removeMonitor()
         }
     }
 }
