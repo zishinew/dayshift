@@ -256,13 +256,13 @@ struct ContentView: View {
     private var scrollingCalendarPage: some View {
         GeometryReader { proxy in
             ZStack {
-                calendarPageLayer(month(byAdding: -1, to: displayedMonth))
+                scrollingCalendarLayer(month(byAdding: -1, to: displayedMonth), in: proxy.size)
                     .offset(y: calendarDragOffset - proxy.size.height)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
-                calendarPageLayer(displayedMonth)
+                scrollingCalendarLayer(displayedMonth, in: proxy.size)
                     .offset(y: calendarDragOffset)
-                calendarPageLayer(month(byAdding: 1, to: displayedMonth))
+                scrollingCalendarLayer(month(byAdding: 1, to: displayedMonth), in: proxy.size)
                     .offset(y: calendarDragOffset + proxy.size.height)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -279,6 +279,17 @@ struct ContentView: View {
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
         .padding(.leading, classPanelWidth)
+    }
+
+    private func scrollingCalendarLayer(_ month: Date, in viewport: CGSize) -> some View {
+        calendarPageLayer(month)
+            // Give every month a concrete page-sized surface before applying
+            // its transform. Without this, SwiftUI can independently redraw
+            // lazy grid descendants while their header moves as one layer.
+            .frame(width: viewport.width, height: viewport.height, alignment: .top)
+            .background(appearance.backgroundColor)
+            .compositingGroup()
+            .id(month)
     }
 
     private var arrowCalendarPage: some View {
