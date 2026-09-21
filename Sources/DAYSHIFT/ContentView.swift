@@ -15,6 +15,8 @@ struct ContentView: View {
     @State private var outgoingCalendarMonth: Date?
     @State private var calendarSlideProgress: CGFloat = 1
     @State private var calendarTransitionID = UUID()
+    @State private var pendingCalendarMoves: [Int] = []
+    @State private var calendarIsAnimating = false
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
@@ -22,7 +24,7 @@ struct ContentView: View {
     private var serif: String { appearance.fontName }
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
     private var calendarMotion: Animation? {
-        reduceMotion ? nil : .timingCurve(0.22, 1, 0.36, 1, duration: 0.42)
+        reduceMotion ? nil : .timingCurve(0.16, 1, 0.3, 1, duration: 0.62)
     }
 
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
@@ -501,8 +503,23 @@ struct ContentView: View {
     }
 
     private func moveMonth(by amount: Int) {
+        let direction = amount >= 0 ? 1 : -1
+
+        if appearance.usesScrollingCalendar, calendarIsAnimating {
+            if pendingCalendarMoves.last == -direction {
+                pendingCalendarMoves.removeLast()
+            } else if pendingCalendarMoves.count < 12 {
+                pendingCalendarMoves.append(direction)
+            }
+            return
+        }
+
+        animateMonthMove(direction)
+    }
+
+    private func animateMonthMove(_ direction: Int) {
         let calendar = Calendar.current
-        guard let date = calendar.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
+        guard let date = calendar.date(byAdding: .month, value: direction, to: displayedMonth) else { return }
 
         if !appearance.usesScrollingCalendar {
             withAnimation(motion) {
@@ -511,8 +528,8 @@ struct ContentView: View {
             return
         }
 
-        guard calendarSlideProgress >= 1 else { return }
-        calendarMoveDirection = amount >= 0 ? 1 : -1
+        calendarIsAnimating = true
+        calendarMoveDirection = direction
         outgoingCalendarMonth = displayedMonth
         displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
         calendarSlideProgress = 0
@@ -522,9 +539,13 @@ struct ContentView: View {
             calendarSlideProgress = 1
         }
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 450_000_000)
+            try? await Task.sleep(nanoseconds: 640_000_000)
             guard calendarTransitionID == transitionID else { return }
             outgoingCalendarMonth = nil
+            calendarIsAnimating = false
+            guard !pendingCalendarMoves.isEmpty else { return }
+            let nextDirection = pendingCalendarMoves.removeFirst()
+            animateMonthMove(nextDirection)
         }
     }
 

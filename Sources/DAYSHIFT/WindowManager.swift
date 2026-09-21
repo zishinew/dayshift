@@ -64,8 +64,7 @@ struct ScrollWheelPager: NSViewRepresentable {
         var onPage: ((Int) -> Void)?
         private var monitor: Any?
         private var accumulatedDelta: CGFloat = 0
-        private var pageTriggered = false
-        private var lastPageTime: TimeInterval = 0
+        private var lastDiscreteEventTime: TimeInterval = 0
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
@@ -87,43 +86,32 @@ struct ScrollWheelPager: NSViewRepresentable {
 
                 let phase = event.phase
                 let momentumPhase = event.momentumPhase
-                if phase.contains(.began) {
+                if phase.contains(.began) || momentumPhase.contains(.began) {
                     self.accumulatedDelta = 0
-                    self.pageTriggered = false
                 }
 
-                // The initiating gesture changes one page. Momentum belongs to
-                // that same gesture and must not advance through more months.
-                if !momentumPhase.isEmpty {
-                    return nil
-                }
-
-                if phase.isEmpty {
-                    if abs(event.scrollingDeltaY) > 0.1 {
-                        self.triggerPage(event.scrollingDeltaY < 0 ? 1 : -1)
+                if !event.hasPreciseScrollingDeltas {
+                    let now = ProcessInfo.processInfo.systemUptime
+                    if abs(event.scrollingDeltaY) > 0.1, now - self.lastDiscreteEventTime >= 0.5 {
+                        self.onPage?(event.scrollingDeltaY < 0 ? 1 : -1)
                     }
+                    self.lastDiscreteEventTime = now
                     return nil
                 }
 
                 self.accumulatedDelta += event.scrollingDeltaY
-                if !self.pageTriggered, abs(self.accumulatedDelta) >= 8 {
-                    self.pageTriggered = true
-                    self.triggerPage(self.accumulatedDelta < 0 ? 1 : -1)
+                let threshold: CGFloat = 24
+                while abs(self.accumulatedDelta) >= threshold {
+                    let direction = self.accumulatedDelta < 0 ? 1 : -1
+                    self.onPage?(direction)
+                    self.accumulatedDelta += self.accumulatedDelta < 0 ? threshold : -threshold
                 }
 
-                if phase.contains(.ended) || phase.contains(.cancelled) {
+                if (phase.contains(.ended) || phase.contains(.cancelled)), momentumPhase.isEmpty {
                     self.accumulatedDelta = 0
-                    self.pageTriggered = false
                 }
                 return nil
             }
-        }
-
-        private func triggerPage(_ direction: Int) {
-            let now = ProcessInfo.processInfo.systemUptime
-            guard now - lastPageTime >= 0.48 else { return }
-            lastPageTime = now
-            onPage?(direction)
         }
 
         func removeMonitor() {
