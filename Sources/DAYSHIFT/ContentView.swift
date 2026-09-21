@@ -14,6 +14,7 @@ struct ContentView: View {
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
+    private let classPanelWidth: CGFloat = 252
     private var serif: String { appearance.fontName }
     private var motion: Animation? { reduceMotion ? nil : .easeInOut(duration: 0.18) }
 
@@ -91,7 +92,7 @@ struct ContentView: View {
 
             Spacer(minLength: 0)
         }
-        .frame(width: 190, alignment: .leading)
+        .frame(width: classPanelWidth - 62, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .topLeading)
         .padding(.top, 32)
         .padding(.leading, 24)
@@ -276,6 +277,9 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, alignment: .top)
             .animation(motion, value: displayedMonth)
         }
+        // The classes panel occupies fixed space on the right. Its matching
+        // leading inset keeps the calendar centered in the whole window.
+        .padding(.leading, classPanelWidth)
     }
 
     private var calendarColumns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
