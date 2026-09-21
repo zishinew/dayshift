@@ -238,44 +238,15 @@ struct ContentView: View {
 
     private var calendarPage: some View {
         ScrollView {
-            VStack(spacing: 0) {
-                HStack {
-                    Button("←") { moveMonth(by: -1) }
-                        .modifier(SubtleHover())
-                    Spacer()
-                    Text(displayedMonth.formatted(.dateTime.month(.wide).year()).lowercased())
-                        .font(.custom(serif, size: appearance.scaled(20)))
-                        .contentTransition(.numericText())
-                    Spacer()
-                    Button("→") { moveMonth(by: 1) }
-                        .modifier(SubtleHover())
+            LazyVStack(spacing: 52) {
+                ForEach(calendarMonths, id: \.self) { month in
+                    calendarMonth(month)
                 }
-                .font(.custom(serif, size: appearance.scaled(17)))
-                .buttonStyle(.plain)
-                .padding(.bottom, 24)
-
-                LazyVGrid(columns: calendarColumns, spacing: 0) {
-                    ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
-                        Text(weekday.lowercased())
-                            .font(.custom(serif, size: appearance.scaled(13)))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.bottom, 10)
-                    }
-                }
-
-                LazyVGrid(columns: calendarColumns, spacing: 18) {
-                    ForEach(monthDates, id: \.self) { date in calendarDay(date) }
-                }
-                .id(displayedMonth)
-                .transition(.opacity)
             }
-            .frame(maxWidth: 1040, alignment: .center)
             .padding(.horizontal, 38)
             .padding(.top, 30)
-            .padding(.bottom, 24)
+            .padding(.bottom, 60)
             .frame(maxWidth: .infinity, alignment: .top)
-            .animation(motion, value: displayedMonth)
         }
         // The classes panel occupies fixed space on the right. Its matching
         // leading inset keeps the calendar centered in the whole window.
@@ -284,24 +255,58 @@ struct ContentView: View {
 
     private var calendarColumns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
 
+    private var calendarMonths: [Date] {
+        let calendar = Calendar.current
+        return (0..<36).compactMap { offset in
+            guard let date = calendar.date(byAdding: .month, value: offset, to: displayedMonth) else { return nil }
+            return calendar.dateInterval(of: .month, for: date)?.start
+        }
+    }
+
+    private func calendarMonth(_ month: Date) -> some View {
+        VStack(spacing: 0) {
+            Text(month.formatted(.dateTime.month(.wide).year()).lowercased())
+                .font(.custom(serif, size: appearance.scaled(20)))
+                .padding(.bottom, 24)
+
+            LazyVGrid(columns: calendarColumns, spacing: 0) {
+                ForEach(Array(weekdayLabels.enumerated()), id: \.offset) { _, weekday in
+                    Text(weekday.lowercased())
+                        .font(.custom(serif, size: appearance.scaled(13)))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.bottom, 10)
+                }
+            }
+
+            LazyVGrid(columns: calendarColumns, spacing: 18) {
+                ForEach(monthDates(for: month), id: \.self) { date in
+                    calendarDay(date, in: month)
+                }
+            }
+        }
+        .frame(maxWidth: 1040, alignment: .center)
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
     private var weekdayLabels: [String] {
         let symbols = Calendar.current.veryShortStandaloneWeekdaySymbols
         let first = max(0, Calendar.current.firstWeekday - 1)
         return Array(symbols[first...] + symbols[..<first])
     }
 
-    private var monthDates: [Date] {
+    private func monthDates(for month: Date) -> [Date] {
         let calendar = Calendar.current
-        guard let month = calendar.dateInterval(of: .month, for: displayedMonth) else { return [] }
-        let weekday = calendar.component(.weekday, from: month.start)
+        guard let interval = calendar.dateInterval(of: .month, for: month) else { return [] }
+        let weekday = calendar.component(.weekday, from: interval.start)
         let leading = (weekday - calendar.firstWeekday + 7) % 7
-        let start = calendar.date(byAdding: .day, value: -leading, to: month.start) ?? month.start
+        let start = calendar.date(byAdding: .day, value: -leading, to: interval.start) ?? interval.start
         return (0..<42).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
     }
 
-    private func calendarDay(_ date: Date) -> some View {
+    private func calendarDay(_ date: Date, in month: Date) -> some View {
         let calendar = Calendar.current
-        let inMonth = calendar.isDate(date, equalTo: displayedMonth, toGranularity: .month)
+        let inMonth = calendar.isDate(date, equalTo: month, toGranularity: .month)
         let selected = calendar.isDate(date, inSameDayAs: selectedDate)
         let tasks = store.tasks(on: date)
 
@@ -309,7 +314,6 @@ struct ContentView: View {
             withAnimation(motion) {
                 selectedDate = date
                 page = .todo
-                if !inMonth { displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date }
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
