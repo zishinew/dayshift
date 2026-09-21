@@ -121,7 +121,7 @@ struct ScrollWheelPager: NSViewRepresentable {
 
         private func triggerPage(_ direction: Int) {
             let now = ProcessInfo.processInfo.systemUptime
-            guard now - lastPageTime >= 0.38 else { return }
+            guard now - lastPageTime >= 0.48 else { return }
             lastPageTime = now
             onPage?(direction)
         }

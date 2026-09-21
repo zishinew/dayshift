@@ -12,6 +12,9 @@ struct ContentView: View {
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
     @State private var calendarMoveDirection = 1
+    @State private var outgoingCalendarMonth: Date?
+    @State private var calendarSlideProgress: CGFloat = 1
+    @State private var calendarTransitionID = UUID()
     @State private var feedback: String?
 
     private let interpreter = TaskCommandInterpreter()
@@ -251,19 +254,22 @@ struct ContentView: View {
     }
 
     private var scrollingCalendarPage: some View {
-        ZStack {
-            calendarMonth(displayedMonth)
-                .padding(.horizontal, 38)
-                .padding(.top, 30)
-                .padding(.bottom, 24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .id(displayedMonth)
-                .transition(monthTransition)
-        }
-        .clipped()
-        .background {
-            ScrollWheelPager { direction in
-                moveMonth(by: direction)
+        GeometryReader { proxy in
+            ZStack {
+                if let outgoingCalendarMonth {
+                    calendarPageLayer(outgoingCalendarMonth)
+                        .offset(y: -CGFloat(calendarMoveDirection) * calendarSlideProgress * proxy.size.height)
+                        .allowsHitTesting(false)
+                }
+
+                calendarPageLayer(displayedMonth)
+                    .offset(y: CGFloat(calendarMoveDirection) * (1 - calendarSlideProgress) * proxy.size.height)
+            }
+            .clipped()
+            .background {
+                ScrollWheelPager { direction in
+                    moveMonth(by: direction)
+                }
             }
         }
         // The classes panel occupies fixed space on the right. Its matching
@@ -301,17 +307,12 @@ struct ContentView: View {
 
     private var calendarColumns: [GridItem] { Array(repeating: GridItem(.flexible(), spacing: 0), count: 7) }
 
-    private var monthTransition: AnyTransition {
-        if calendarMoveDirection > 0 {
-            return .asymmetric(
-                insertion: .move(edge: .bottom),
-                removal: .move(edge: .top)
-            )
-        }
-        return .asymmetric(
-            insertion: .move(edge: .top),
-            removal: .move(edge: .bottom)
-        )
+    private func calendarPageLayer(_ month: Date) -> some View {
+        calendarMonth(month)
+            .padding(.horizontal, 38)
+            .padding(.top, 30)
+            .padding(.bottom, 24)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private func calendarMonth(_ month: Date) -> some View {
@@ -502,9 +503,28 @@ struct ContentView: View {
     private func moveMonth(by amount: Int) {
         let calendar = Calendar.current
         guard let date = calendar.date(byAdding: .month, value: amount, to: displayedMonth) else { return }
+
+        if !appearance.usesScrollingCalendar {
+            withAnimation(motion) {
+                displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
+            }
+            return
+        }
+
+        guard calendarSlideProgress >= 1 else { return }
         calendarMoveDirection = amount >= 0 ? 1 : -1
+        outgoingCalendarMonth = displayedMonth
+        displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
+        calendarSlideProgress = 0
+        let transitionID = UUID()
+        calendarTransitionID = transitionID
         withAnimation(calendarMotion) {
-            displayedMonth = calendar.dateInterval(of: .month, for: date)?.start ?? date
+            calendarSlideProgress = 1
+        }
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            guard calendarTransitionID == transitionID else { return }
+            outgoingCalendarMonth = nil
         }
     }
 
