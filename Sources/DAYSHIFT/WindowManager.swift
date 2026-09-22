@@ -5,6 +5,7 @@ import SwiftUI
 final class WindowManager {
     static let shared = WindowManager()
     private weak var window: NSWindow?
+    private weak var tutorialDimmer: NSView?
     private var configured = false
 
     func attach(_ window: NSWindow) {
@@ -29,17 +30,114 @@ final class WindowManager {
         }
     }
 
+    func setTutorialDimmed(_ dimmed: Bool) {
+        guard let window, let frameView = window.contentView?.superview else { return }
+        guard dimmed else {
+            tutorialDimmer?.removeFromSuperview()
+            return
+        }
+
+        let titlebarHeight = max(0, frameView.bounds.height - window.contentLayoutRect.height)
+        let frame = CGRect(
+            x: 0,
+            y: frameView.bounds.maxY - titlebarHeight,
+            width: frameView.bounds.width,
+            height: titlebarHeight
+        )
+        if let tutorialDimmer {
+            tutorialDimmer.frame = frame
+            return
+        }
+
+        let dimmer = TitlebarDimmerView(frame: frame)
+        dimmer.autoresizingMask = [.width, .minYMargin]
+        dimmer.wantsLayer = true
+        dimmer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.48).cgColor
+        frameView.addSubview(dimmer, positioned: .above, relativeTo: nil)
+        tutorialDimmer = dimmer
+    }
+
+    private final class TitlebarDimmerView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
 }
 
 struct WindowAccessor: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { AccessView() }
-    func updateNSView(_ nsView: NSView, context: Context) { }
+    var tutorialDimmed = false
+
+    func makeNSView(context: Context) -> NSView {
+        let view = AccessView()
+        view.tutorialDimmed = tutorialDimmed
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let view = nsView as? AccessView else { return }
+        view.tutorialDimmed = tutorialDimmed
+        WindowManager.shared.setTutorialDimmed(tutorialDimmed)
+    }
 
     private final class AccessView: NSView {
+        var tutorialDimmed = false
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            if let window { WindowManager.shared.attach(window) }
+            if let window {
+                WindowManager.shared.attach(window)
+                WindowManager.shared.setTutorialDimmed(tutorialDimmed)
+            }
         }
+    }
+}
+
+struct RightClickHandler: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = EventView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? EventView)?.action = action
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        (nsView as? EventView)?.removeMonitor()
+    }
+
+    private final class EventView: NSView {
+        var action: (() -> Void)?
+        private var monitor: Any?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if window == nil { removeMonitor() } else { installMonitor() }
+        }
+
+        private func installMonitor() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
+                guard let self,
+                      event.window === self.window,
+                      self.bounds.contains(self.convert(event.locationInWindow, from: nil)) else {
+                    return event
+                }
+                DispatchQueue.main.async { [weak self] in self?.action?() }
+                return nil
+            }
+        }
+
+        func removeMonitor() {
+            if let monitor {
+                NSEvent.removeMonitor(monitor)
+                self.monitor = nil
+            }
+        }
+
+        deinit { removeMonitor() }
     }
 }
 

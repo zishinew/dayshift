@@ -11,7 +11,6 @@ struct DAYSHIFTApp: App {
             ContentView()
                 .environment(store)
                 .environment(appearance)
-                .background(WindowAccessor())
                 .frame(minWidth: 700, minHeight: 580)
         }
         .defaultSize(width: 900, height: 700)

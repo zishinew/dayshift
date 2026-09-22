@@ -117,7 +117,7 @@ struct ContentView: View {
             }
 #endif
         }
-        .background(WindowAccessor())
+        .background(WindowAccessor(tutorialDimmed: !hasCompletedTutorial))
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
             GeometryReader { proxy in
                 if !hasCompletedTutorial,
@@ -305,7 +305,7 @@ struct ContentView: View {
         case 2:
             "click the highlighted title, type a new name, then press return."
         case 3:
-            "right-click the highlighted title and choose delete. this works for every task and event."
+            "right-click the highlighted title to delete it immediately. this works for every task and event."
         case 4:
             "your classes appear here. add them anytime with commands like “i have classes math237, cs136”; class names will autocomplete later."
         default:
@@ -990,9 +990,6 @@ private struct TaskRow: View {
                         .foregroundStyle(task.isComplete ? .secondary : .primary)
                         .contentShape(Rectangle())
                         .onTapGesture(perform: beginEditing)
-                        .contextMenu {
-                            Button("delete", action: onDelete)
-                        }
                         .help("click to rename · right-click to delete")
                         .modifier(SubtleHover())
                         .background { tutorialTitleFrameReader }
@@ -1007,6 +1004,9 @@ private struct TaskRow: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading)))
                         .zIndex(2)
                 }
+            }
+            .background {
+                RightClickHandler(action: onDelete)
             }
 
             Spacer()
