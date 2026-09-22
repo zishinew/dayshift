@@ -12,13 +12,24 @@ private struct TutorialAnchorKey: PreferenceKey {
     }
 }
 
-private struct TutorialSpotlight: Shape {
+private struct TutorialDimmer: View {
     let spotlight: CGRect
 
-    func path(in rect: CGRect) -> Path {
-        var path = Path(rect)
-        path.addRoundedRect(in: spotlight, cornerSize: CGSize(width: 12, height: 12))
-        return path
+    var body: some View {
+        Color.black.opacity(0.48)
+            .mask {
+                Rectangle()
+                    .fill(.white)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(.black)
+                            .frame(width: spotlight.width, height: spotlight.height)
+                            .position(x: spotlight.midX, y: spotlight.midY)
+                            .blur(radius: 24)
+                    }
+                    .compositingGroup()
+                    .luminanceToAlpha()
+            }
     }
 }
 
@@ -109,9 +120,13 @@ struct ContentView: View {
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
             GeometryReader { proxy in
                 if !hasCompletedTutorial, let anchor = anchors[tutorialTarget] {
+                    let spotlight = tutorialSpotlight(
+                        around: proxy[anchor],
+                        in: proxy.size
+                    )
                     tutorialOverlay(
                         in: proxy.size,
-                        spotlight: proxy[anchor].insetBy(dx: -8, dy: -8)
+                        spotlight: spotlight
                     )
                     .transition(.opacity)
                 }
@@ -124,16 +139,8 @@ struct ContentView: View {
 
     private func tutorialOverlay(in size: CGSize, spotlight: CGRect) -> some View {
         ZStack(alignment: .topLeading) {
-            TutorialSpotlight(spotlight: spotlight)
-                .fill(Color.black.opacity(0.48), style: FillStyle(eoFill: true))
+            TutorialDimmer(spotlight: spotlight)
                 .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.72), lineWidth: 1)
-                .frame(width: spotlight.width, height: spotlight.height)
-                .position(x: spotlight.midX, y: spotlight.midY)
-                .shadow(color: .black.opacity(0.18), radius: 14)
                 .allowsHitTesting(false)
 
             tutorialCard
@@ -151,6 +158,30 @@ struct ContentView: View {
         .animation(motion, value: tutorialStep)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Dayshift tutorial, step \(tutorialStep + 1) of 6")
+    }
+
+    private func tutorialSpotlight(around anchor: CGRect, in size: CGSize) -> CGRect {
+        switch tutorialTarget {
+        case .commandBar:
+            // Extend beyond every window edge except the softly feathered top.
+            // This keeps the complete command area illuminated, including the
+            // bottom safe-area inset beneath its visible SwiftUI bounds.
+            return CGRect(
+                x: -40,
+                y: anchor.minY - 18,
+                width: size.width + 80,
+                height: size.height - anchor.minY + 76
+            )
+        case .classes:
+            return CGRect(
+                x: anchor.minX - 16,
+                y: anchor.minY - 18,
+                width: size.width - anchor.minX + 56,
+                height: anchor.height + 36
+            )
+        case .calendar:
+            return anchor.insetBy(dx: -14, dy: -14)
+        }
     }
 
     private var tutorialCard: some View {
