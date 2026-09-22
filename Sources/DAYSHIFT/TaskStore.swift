@@ -152,6 +152,16 @@ final class TaskStore {
     @discardableResult
     func delete(matching query: String) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return delete(at: index)
+    }
+
+    @discardableResult
+    func delete(_ task: TaskItem) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return delete(at: index)
+    }
+
+    private func delete(at index: Int) -> String {
         recordMutation()
         let title = tasks[index].title
         completionDeletionTasks[tasks[index].id]?.cancel()
@@ -334,15 +344,6 @@ final class TaskStore {
         tasks.removeAll(where: \.isComplete)
         save()
         return count
-    }
-
-    func delete(_ task: TaskItem) {
-        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        recordMutation()
-        completionDeletionTasks[task.id]?.cancel()
-        completionDeletionTasks[task.id] = nil
-        tasks.remove(at: index)
-        save()
     }
 
     func undo() {

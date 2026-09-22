@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum TutorialTarget: Hashable {
-    case commandBar, classes, calendar
+    case commandBar, taskTitle(UUID), classes, calendar
 }
 
 private struct TutorialAnchorKey: PreferenceKey {
@@ -45,6 +45,7 @@ struct ContentView: View {
     @State private var tutorialStep = 0
     @State private var tutorialQuizID: UUID?
     @State private var tutorialTaskID: UUID?
+    @State private var tutorialTaskTitleFrame = CGRect.zero
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -98,6 +99,7 @@ struct ContentView: View {
         .background(appearance.backgroundColor)
         .foregroundStyle(appearance.textColor)
         .preferredColorScheme(.light)
+        .coordinateSpace(name: "tutorialRoot")
         .toolbar {
 #if compiler(>=6.0)
             if #available(macOS 26.0, *) {
@@ -119,7 +121,15 @@ struct ContentView: View {
         .background(WindowAccessor())
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
             GeometryReader { proxy in
-                if !hasCompletedTutorial, let anchor = anchors[tutorialTarget] {
+                if !hasCompletedTutorial,
+                   case .taskTitle = tutorialTarget,
+                   !tutorialTaskTitleFrame.isEmpty {
+                    tutorialOverlay(
+                        in: proxy.size,
+                        spotlight: tutorialSpotlight(around: tutorialTaskTitleFrame, in: proxy.size)
+                    )
+                    .transition(.opacity)
+                } else if !hasCompletedTutorial, let anchor = anchors[tutorialTarget] {
                     let spotlight = tutorialSpotlight(
                         around: proxy[anchor],
                         in: proxy.size
@@ -130,6 +140,17 @@ struct ContentView: View {
                     )
                     .transition(.opacity)
                 }
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            if !hasCompletedTutorial {
+                Button("skip tutorial") { completeTutorial() }
+                    .buttonStyle(.plain)
+                    .font(.custom(serif, size: appearance.scaled(13)))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .padding(.top, 18)
+                    .padding(.leading, 22)
+                    .modifier(SubtleHover())
             }
         }
         .onAppear {
@@ -145,16 +166,9 @@ struct ContentView: View {
 
             tutorialCard
                 .position(tutorialCardPosition(in: size, spotlight: spotlight))
-
-            Button("skip tutorial") { completeTutorial() }
-                .buttonStyle(.plain)
-                .font(.custom(serif, size: appearance.scaled(13)))
-                .foregroundStyle(Color.white.opacity(0.72))
-                .padding(.top, 18)
-                .padding(.leading, 22)
-                .modifier(SubtleHover())
         }
         .frame(width: size.width, height: size.height)
+        .allowsHitTesting(tutorialStep >= 4)
         .animation(motion, value: tutorialStep)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Dayshift tutorial, step \(tutorialStep + 1) of 6")
@@ -172,6 +186,8 @@ struct ContentView: View {
                 width: size.width + 80,
                 height: size.height - anchor.minY + 76
             )
+        case .taskTitle:
+            return anchor.insetBy(dx: -12, dy: -8)
         case .classes:
             return CGRect(
                 x: anchor.minX - 16,
@@ -209,7 +225,7 @@ struct ContentView: View {
             }
 
             if tutorialStep < 4 {
-                Text("type it below and press return")
+                Text(tutorialStep < 2 ? "type it below and press return" : tutorialStep == 2 ? "click the title to continue" : "right-click the title to continue")
                     .font(.custom(serif, size: appearance.scaled(11)))
                     .foregroundStyle(appearance.textColor.opacity(0.42))
                     .padding(.top, 14)
@@ -242,6 +258,8 @@ struct ContentView: View {
 
     private var tutorialTarget: TutorialTarget {
         switch tutorialStep {
+        case 2, 3:
+            tutorialTaskID.map(TutorialTarget.taskTitle) ?? .commandBar
         case 4: .classes
         case 5: .calendar
         default: .commandBar
@@ -252,6 +270,11 @@ struct ContentView: View {
         switch tutorialTarget {
         case .commandBar:
             CGPoint(x: size.width / 2, y: max(135, spotlight.minY - 135))
+        case .taskTitle:
+            CGPoint(
+                x: min(size.width - 225, spotlight.maxX + 225),
+                y: min(size.height - 135, max(135, spotlight.midY))
+            )
         case .classes:
             CGPoint(x: max(225, spotlight.minX - 225), y: min(size.height - 135, spotlight.minY + 145))
         case .calendar:
@@ -277,9 +300,9 @@ struct ContentView: View {
         case 1:
             "tasks get checkboxes. add a small sample task so you can see the difference."
         case 2:
-            "everything can be changed from this same bar. rename the task you just created."
+            "click the highlighted title, type a new name, then press return."
         case 3:
-            "removing something works the same way. delete the renamed sample task."
+            "right-click the highlighted title and choose delete. this works for every task and event."
         case 4:
             "your classes appear here. add them anytime with commands like “i have classes math237, cs136”; class names will autocomplete later."
         default:
@@ -293,18 +316,8 @@ struct ContentView: View {
         switch tutorialStep {
         case 0: "tutorial quiz tomorrow"
         case 1: "write tutorial notes tomorrow"
-        case 2: "rename \(tutorialTaskTitle) to study session"
-        case 3: "delete \(tutorialTaskTitle)"
         default: nil
         }
-    }
-
-    private var tutorialTaskTitle: String {
-        guard let tutorialTaskID,
-              let task = store.tasks.first(where: { $0.id == tutorialTaskID }) else {
-            return "tutorial task"
-        }
-        return task.title.lowercased()
     }
 
     private func advanceTutorial() {
@@ -316,7 +329,7 @@ struct ContentView: View {
             tutorialStep += 1
             if tutorialStep == 5 { page = .calendar }
         }
-        commandBarIsFocused = tutorialStep < 4
+        commandBarIsFocused = tutorialStep < 2
     }
 
     private func completeTutorial() {
@@ -480,8 +493,22 @@ struct ContentView: View {
             task: task,
             serif: serif,
             showsDueDate: showsDueDate,
+            highlightsTitle: !hasCompletedTutorial && tutorialTaskID == task.id && (tutorialStep == 2 || tutorialStep == 3),
+            onTitleFrameChange: { tutorialTaskTitleFrame = $0 },
             onToggle: { withAnimation(motion) { store.toggle(task) } },
-            onRename: { _ = store.rename(task, to: $0) },
+            onRename: {
+                let previousTitle = task.title
+                let renamed = store.rename(task, to: $0)
+                if tutorialStep == 2, tutorialTaskID == task.id, renamed != nil, renamed != previousTitle {
+                    moveTutorial(to: 3)
+                }
+            },
+            onDelete: {
+                let deleted = store.delete(task)
+                if tutorialStep == 3, tutorialTaskID == task.id, deleted != nil {
+                    moveTutorial(to: 4)
+                }
+            },
             onDateChange: { _ = store.setDate(task, to: $0) },
             onPriorityChange: { _ = store.setPriority(task, to: $0) },
             onRepeatChange: { _ = store.setRepeat(task, to: $0) }
@@ -734,9 +761,6 @@ struct ContentView: View {
         guard !value.isEmpty else { return }
         let command = interpreter.interpret(value)
         let taskIDsBeforeCommand = Set(store.tasks.map(\.id))
-        let tutorialTaskTitleBeforeCommand = tutorialTaskID.flatMap { id in
-            store.tasks.first(where: { $0.id == id })?.title
-        }
 
         withAnimation(motion) {
             switch command {
@@ -768,15 +792,13 @@ struct ContentView: View {
 
         updateTutorial(
             after: command,
-            taskIDsBeforeCommand: taskIDsBeforeCommand,
-            tutorialTaskTitleBeforeCommand: tutorialTaskTitleBeforeCommand
+            taskIDsBeforeCommand: taskIDsBeforeCommand
         )
     }
 
     private func updateTutorial(
         after command: TaskCommand,
-        taskIDsBeforeCommand: Set<UUID>,
-        tutorialTaskTitleBeforeCommand: String?
+        taskIDsBeforeCommand: Set<UUID>
     ) {
         guard !hasCompletedTutorial else { return }
         let addedTask = store.tasks.first { !taskIDsBeforeCommand.contains($0.id) }
@@ -790,18 +812,6 @@ struct ContentView: View {
             guard case .add = command, let addedTask, !addedTask.isEvent else { return }
             tutorialTaskID = addedTask.id
             moveTutorial(to: 2)
-        case 2:
-            guard case .rename = command,
-                  let tutorialTaskID,
-                  let tutorialTaskTitleBeforeCommand,
-                  let renamed = store.tasks.first(where: { $0.id == tutorialTaskID }),
-                  renamed.title != tutorialTaskTitleBeforeCommand else { return }
-            moveTutorial(to: 3)
-        case 3:
-            guard case .delete = command,
-                  let tutorialTaskID,
-                  !store.tasks.contains(where: { $0.id == tutorialTaskID }) else { return }
-            moveTutorial(to: 4)
         default:
             break
         }
@@ -810,7 +820,7 @@ struct ContentView: View {
     private func moveTutorial(to step: Int) {
         withAnimation(motion) { tutorialStep = step }
         commandBarIsFocused = false
-        guard step < 4 else { return }
+        guard step < 2 else { return }
         Task { @MainActor in
             await Task.yield()
             commandBarIsFocused = true
@@ -910,8 +920,11 @@ private struct TaskRow: View {
     let task: TaskItem
     let serif: String
     let showsDueDate: Bool
+    let highlightsTitle: Bool
+    let onTitleFrameChange: (CGRect) -> Void
     let onToggle: () -> Void
     let onRename: (String) -> Void
+    let onDelete: () -> Void
     let onDateChange: (Date) -> Void
     let onPriorityChange: (TaskPriority) -> Void
     let onRepeatChange: (RepeatRule?) -> Void
@@ -952,6 +965,7 @@ private struct TaskRow: View {
                         .onChange(of: titleIsFocused) { _, focused in
                             if !focused { commitTitle() }
                         }
+                        .background { tutorialTitleFrameReader }
                         .transition(.opacity)
                 } else {
                     Text(task.title.lowercased())
@@ -960,8 +974,12 @@ private struct TaskRow: View {
                         .foregroundStyle(task.isComplete ? .secondary : .primary)
                         .contentShape(Rectangle())
                         .onTapGesture(perform: beginEditing)
-                        .help("click to rename")
+                        .contextMenu {
+                            Button("delete", action: onDelete)
+                        }
+                        .help("click to rename · right-click to delete")
                         .modifier(SubtleHover())
+                        .background { tutorialTitleFrameReader }
                         .transition(.opacity)
                 }
 
@@ -980,6 +998,18 @@ private struct TaskRow: View {
         .padding(.vertical, appearance.rowSpacing)
         .zIndex(detailEditor == nil ? 0 : 1)
         .animation(.easeInOut(duration: 0.15), value: detailEditor)
+    }
+
+    @ViewBuilder
+    private var tutorialTitleFrameReader: some View {
+        if highlightsTitle {
+            GeometryReader { proxy in
+                let frame = proxy.frame(in: .named("tutorialRoot"))
+                Color.clear
+                    .onAppear { onTitleFrameChange(frame) }
+                    .onChange(of: frame) { _, newFrame in onTitleFrameChange(newFrame) }
+            }
+        }
     }
 
     private var detailLine: some View {

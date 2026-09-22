@@ -125,6 +125,18 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testDeletingClickedTaskTargetsItsID() {
+        let store = makeStore()
+        store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: "MATH237", repeatRule: nil))
+        store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: "STAT230", repeatRule: nil))
+        let mathQuiz = store.tasks.first { $0.classCode == "MATH237" }!
+
+        XCTAssertEqual(store.delete(mathQuiz), "Quiz")
+        XCTAssertNil(store.tasks.first { $0.id == mathQuiz.id })
+        XCTAssertEqual(store.tasks.first?.classCode, "STAT230")
+    }
+
+    @MainActor
     func testCompletedTaskAutoDeletesAndUndoRestoresIt() async throws {
         let store = makeStore(completionDelayNanoseconds: 20_000_000)
         store.add(ParsedTask(title: "Quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
