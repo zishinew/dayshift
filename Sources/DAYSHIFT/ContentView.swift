@@ -424,6 +424,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 TextField("type anything…", text: $input)
                     .textFieldStyle(.plain)
+                    .tint(appearance.textColor)
                     .font(.custom(serif, size: appearance.scaled(19)))
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in
@@ -639,6 +640,7 @@ private struct TaskRow: View {
                 if isEditingTitle {
                     TextField("task title", text: $titleDraft)
                         .textFieldStyle(.plain)
+                        .tint(appearance.textColor)
                         .font(.custom(serif, size: appearance.scaled(18)))
                         .focused($titleIsFocused)
                         .onSubmit(commitTitle)
