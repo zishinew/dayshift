@@ -143,6 +143,24 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testDiscardingTutorialTasksAlsoRemovesThemFromHistory() {
+        let store = makeStore()
+        store.add(ParsedTask(title: "Real task", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
+        let realTaskID = store.tasks.first!.id
+        store.add(ParsedTask(title: "Tutorial quiz", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil, isEvent: true))
+        let tutorialQuizID = store.tasks.first!.id
+        store.add(ParsedTask(title: "Tutorial notes", dueDate: Date(), priority: .medium, classCode: nil, repeatRule: nil))
+        let tutorialTaskID = store.tasks.first!.id
+
+        store.discardTasks(withIDs: [tutorialQuizID, tutorialTaskID])
+
+        XCTAssertEqual(store.tasks.map(\.id), [realTaskID])
+        store.undo()
+        XCTAssertTrue(store.tasks.isEmpty)
+        XCTAssertFalse(store.tasks.contains { $0.id == tutorialQuizID || $0.id == tutorialTaskID })
+    }
+
+    @MainActor
     private func makeStore(completionDelayNanoseconds: UInt64 = 2_000_000_000) -> TaskStore {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         return TaskStore(

@@ -42,6 +42,33 @@ final class TaskStore {
         save()
     }
 
+    /// Removes temporary tasks created by the first-run walkthrough without
+    /// leaving tutorial-only actions in the user's undo history.
+    func discardTasks(withIDs ids: Set<UUID>) {
+        guard !ids.isEmpty, tasks.contains(where: { ids.contains($0.id) }) else { return }
+        for id in ids {
+            completionDeletionTasks[id]?.cancel()
+            completionDeletionTasks[id] = nil
+        }
+        tasks.removeAll { ids.contains($0.id) }
+        undoStack = sanitizedHistory(undoStack, removing: ids, current: Snapshot(tasks: tasks, classes: classes))
+        redoStack = sanitizedHistory(redoStack, removing: ids, current: Snapshot(tasks: tasks, classes: classes))
+        save()
+    }
+
+    private func sanitizedHistory(_ history: [Snapshot], removing ids: Set<UUID>, current: Snapshot) -> [Snapshot] {
+        var result: [Snapshot] = []
+        for snapshot in history {
+            let cleaned = Snapshot(tasks: snapshot.tasks.filter { !ids.contains($0.id) }, classes: snapshot.classes)
+            if let last = result.last, last.tasks == cleaned.tasks, last.classes == cleaned.classes { continue }
+            result.append(cleaned)
+        }
+        while let last = result.last, last.tasks == current.tasks, last.classes == current.classes {
+            result.removeLast()
+        }
+        return result
+    }
+
     func addClass(code: String, name: String) {
         let normalized = code.replacingOccurrences(of: " ", with: "").uppercased()
         guard classes.first(where: { $0.code == normalized })?.name != name else { return }

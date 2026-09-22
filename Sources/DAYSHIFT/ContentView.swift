@@ -1,5 +1,27 @@
 import SwiftUI
 
+private enum TutorialTarget: Hashable {
+    case commandBar, classes, calendar
+}
+
+private struct TutorialAnchorKey: PreferenceKey {
+    static var defaultValue: [TutorialTarget: Anchor<CGRect>] = [:]
+
+    static func reduce(value: inout [TutorialTarget: Anchor<CGRect>], nextValue: () -> [TutorialTarget: Anchor<CGRect>]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+
+private struct TutorialSpotlight: Shape {
+    let spotlight: CGRect
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path(rect)
+        path.addRoundedRect(in: spotlight, cornerSize: CGSize(width: 12, height: 12))
+        return path
+    }
+}
+
 @MainActor
 struct ContentView: View {
     private enum Page { case todo, calendar, settings }
@@ -10,6 +32,8 @@ struct ContentView: View {
     @AppStorage("hasCompletedTutorial") private var hasCompletedTutorial = false
     @State private var page: Page = .todo
     @State private var tutorialStep = 0
+    @State private var tutorialQuizID: UUID?
+    @State private var tutorialTaskID: UUID?
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -18,6 +42,7 @@ struct ContentView: View {
     @State private var calendarSettlingDirection = 0
     @State private var calendarViewportHeight: CGFloat = 700
     @State private var feedback: String?
+    @FocusState private var commandBarIsFocused: Bool
 
     private let interpreter = TaskCommandInterpreter()
     private let classPanelWidth: CGFloat = 252
@@ -50,11 +75,14 @@ struct ContentView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .animation(motion, value: page)
+                .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.calendar: $0] }
 
                 classPanel
+                    .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.classes: $0] }
             }
 
             commandBar
+                .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.commandBar: $0] }
         }
         .background(appearance.backgroundColor)
         .foregroundStyle(appearance.textColor)
@@ -78,102 +106,190 @@ struct ContentView: View {
 #endif
         }
         .background(WindowAccessor())
-        .overlay {
-            if !hasCompletedTutorial {
-                tutorial
+        .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
+            GeometryReader { proxy in
+                if !hasCompletedTutorial, let anchor = anchors[tutorialTarget] {
+                    tutorialOverlay(
+                        in: proxy.size,
+                        spotlight: proxy[anchor].insetBy(dx: -8, dy: -8)
+                    )
                     .transition(.opacity)
+                }
             }
+        }
+        .onAppear {
+            if !hasCompletedTutorial { commandBarIsFocused = true }
         }
     }
 
-    private var tutorial: some View {
-        ZStack {
-            appearance.backgroundColor
+    private func tutorialOverlay(in size: CGSize, spotlight: CGRect) -> some View {
+        ZStack(alignment: .topLeading) {
+            TutorialSpotlight(spotlight: spotlight)
+                .fill(Color.black.opacity(0.48), style: FillStyle(eoFill: true))
                 .ignoresSafeArea()
+                .allowsHitTesting(false)
 
-            VStack(spacing: 0) {
-                Text("\(tutorialStep + 1) / 3")
-                    .font(.custom(serif, size: appearance.scaled(12)))
-                    .foregroundStyle(appearance.textColor.opacity(0.45))
-                    .padding(.bottom, 24)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.white.opacity(0.72), lineWidth: 1)
+                .frame(width: spotlight.width, height: spotlight.height)
+                .position(x: spotlight.midX, y: spotlight.midY)
+                .shadow(color: .black.opacity(0.18), radius: 14)
+                .allowsHitTesting(false)
 
-                Text(tutorialTitle)
-                    .font(.custom(serif, size: appearance.scaled(24)))
-                    .padding(.bottom, 14)
+            tutorialCard
+                .position(tutorialCardPosition(in: size, spotlight: spotlight))
 
-                Text(tutorialBody)
-                    .font(.custom(serif, size: appearance.scaled(16)))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(4)
-                    .foregroundStyle(appearance.textColor.opacity(0.72))
-                    .padding(.bottom, 18)
-
-                Text(tutorialExample)
-                    .font(.custom(serif, size: appearance.scaled(15)))
-                    .italic()
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom, 34)
-
-                HStack(spacing: 22) {
-                    Button("skip") { completeTutorial() }
-                        .foregroundStyle(appearance.textColor.opacity(0.5))
-                        .modifier(SubtleHover())
-
-                    Button(tutorialStep == 2 ? "done" : "next") {
-                        advanceTutorial()
-                    }
-                    .modifier(SubtleHover())
-                }
+            Button("skip tutorial") { completeTutorial() }
                 .buttonStyle(.plain)
-                .font(.custom(serif, size: appearance.scaled(15)))
-            }
-            .frame(maxWidth: 460)
-            .padding(40)
-            .id(tutorialStep)
-            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                .font(.custom(serif, size: appearance.scaled(13)))
+                .foregroundStyle(Color.white.opacity(0.72))
+                .padding(.top, 18)
+                .padding(.leading, 22)
+                .modifier(SubtleHover())
         }
-        .foregroundStyle(appearance.textColor)
+        .frame(width: size.width, height: size.height)
         .animation(motion, value: tutorialStep)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Dayshift tutorial, step \(tutorialStep + 1) of 3")
+        .accessibilityLabel("Dayshift tutorial, step \(tutorialStep + 1) of 6")
+    }
+
+    private var tutorialCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("\(tutorialStep + 1) of 6")
+                .font(.custom(serif, size: appearance.scaled(11)))
+                .foregroundStyle(appearance.textColor.opacity(0.42))
+                .padding(.bottom, 12)
+
+            Text(tutorialTitle)
+                .font(.custom(serif, size: appearance.scaled(21)))
+                .padding(.bottom, 9)
+
+            Text(tutorialBody)
+                .font(.custom(serif, size: appearance.scaled(14)))
+                .foregroundStyle(appearance.textColor.opacity(0.7))
+                .lineSpacing(3)
+
+            if let example = tutorialExample {
+                Text(example)
+                    .font(.custom(serif, size: appearance.scaled(14)))
+                    .italic()
+                    .padding(.top, 13)
+                    .textSelection(.enabled)
+            }
+
+            if tutorialStep < 4 {
+                Text("type it below and press return")
+                    .font(.custom(serif, size: appearance.scaled(11)))
+                    .foregroundStyle(appearance.textColor.opacity(0.42))
+                    .padding(.top, 14)
+            } else {
+                Button(tutorialStep == 5 ? "finish" : "next") {
+                    advanceTutorial()
+                }
+                .buttonStyle(.plain)
+                .font(.custom(serif, size: appearance.scaled(14)))
+                .padding(.top, 16)
+                .modifier(SubtleHover())
+            }
+        }
+        .foregroundStyle(appearance.textColor)
+        .frame(width: 370, alignment: .leading)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 19)
+        .background {
+            RoundedRectangle(cornerRadius: 14)
+                .fill(appearance.backgroundColor)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(appearance.textColor.opacity(0.14), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+        }
+        .id(tutorialStep)
+        .transition(.opacity.combined(with: .scale(scale: 0.98)))
+    }
+
+    private var tutorialTarget: TutorialTarget {
+        switch tutorialStep {
+        case 4: .classes
+        case 5: .calendar
+        default: .commandBar
+        }
+    }
+
+    private func tutorialCardPosition(in size: CGSize, spotlight: CGRect) -> CGPoint {
+        switch tutorialTarget {
+        case .commandBar:
+            CGPoint(x: size.width / 2, y: max(135, spotlight.minY - 135))
+        case .classes:
+            CGPoint(x: max(225, spotlight.minX - 225), y: min(size.height - 135, spotlight.minY + 145))
+        case .calendar:
+            CGPoint(x: min(size.width - 225, spotlight.midX), y: min(size.height - 135, spotlight.maxY - 135))
+        }
     }
 
     private var tutorialTitle: String {
         switch tutorialStep {
-        case 0: "type what you need"
-        case 1: "add your classes"
-        default: "see your calendar"
+        case 0: "add a sample event"
+        case 1: "now add a task"
+        case 2: "rename the task"
+        case 3: "remove the task"
+        case 4: "keep classes together"
+        default: "your month at a glance"
         }
     }
 
     private var tutorialBody: String {
         switch tutorialStep {
         case 0:
-            "use the command bar at the bottom for everything—adding, completing, moving, renaming, or removing tasks."
+            "the command bar understands ordinary language. start with a quiz; dayshift will recognize it as an event without a checkbox."
         case 1:
-            "tell dayshift which classes you have. class names will then autocomplete while you add schoolwork."
+            "tasks get checkboxes. add a small sample task so you can see the difference."
+        case 2:
+            "everything can be changed from this same bar. rename the task you just created."
+        case 3:
+            "removing something works the same way. delete the renamed sample task."
+        case 4:
+            "your classes appear here. add them anytime with commands like “i have classes math237, cs136”; class names will autocomplete later."
         default:
-            "choose calendar at the top to see the month. scroll to move between months, or change to arrows in settings."
+            appearance.usesScrollingCalendar
+                ? "the calendar shows tasks and events together. scroll to change months, or switch to arrows in settings."
+                : "the calendar shows tasks and events together. use the arrows to change months, or switch to scrolling in settings."
         }
     }
 
-    private var tutorialExample: String {
+    private var tutorialExample: String? {
         switch tutorialStep {
-        case 0: "“quiz next wednesday”  ·  “move quiz to friday”"
-        case 1: "“i have classes math237, cs136”"
-        default: "“show calendar”"
+        case 0: "tutorial quiz tomorrow"
+        case 1: "write tutorial notes tomorrow"
+        case 2: "rename \(tutorialTaskTitle) to study session"
+        case 3: "delete \(tutorialTaskTitle)"
+        default: nil
         }
+    }
+
+    private var tutorialTaskTitle: String {
+        guard let tutorialTaskID,
+              let task = store.tasks.first(where: { $0.id == tutorialTaskID }) else {
+            return "tutorial task"
+        }
+        return task.title.lowercased()
     }
 
     private func advanceTutorial() {
-        guard tutorialStep < 2 else {
+        guard tutorialStep < 5 else {
             completeTutorial()
             return
         }
-        withAnimation(motion) { tutorialStep += 1 }
+        withAnimation(motion) {
+            tutorialStep += 1
+            if tutorialStep == 5 { page = .calendar }
+        }
+        commandBarIsFocused = tutorialStep < 4
     }
 
     private func completeTutorial() {
+        store.discardTasks(withIDs: Set([tutorialQuizID, tutorialTaskID].compactMap { $0 }))
         withAnimation(motion) { hasCompletedTutorial = true }
     }
 
@@ -525,6 +641,7 @@ struct ContentView: View {
                     .textFieldStyle(.plain)
                     .tint(appearance.textColor)
                     .font(.custom(serif, size: appearance.scaled(19)))
+                    .focused($commandBarIsFocused)
                     .onSubmit(executeCommand)
                     .onChange(of: input) { _, _ in
                         withAnimation(motion) { feedback = nil }
@@ -585,6 +702,10 @@ struct ContentView: View {
         let value = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !value.isEmpty else { return }
         let command = interpreter.interpret(value)
+        let taskIDsBeforeCommand = Set(store.tasks.map(\.id))
+        let tutorialTaskTitleBeforeCommand = tutorialTaskID.flatMap { id in
+            store.tasks.first(where: { $0.id == id })?.title
+        }
 
         withAnimation(motion) {
             switch command {
@@ -612,6 +733,56 @@ struct ContentView: View {
             case .help: feedback = "try “rename quiz to midterm”, “move quiz to friday”, “priority quiz high”, or “assign quiz to math237”."
             }
             input = ""
+        }
+
+        updateTutorial(
+            after: command,
+            taskIDsBeforeCommand: taskIDsBeforeCommand,
+            tutorialTaskTitleBeforeCommand: tutorialTaskTitleBeforeCommand
+        )
+    }
+
+    private func updateTutorial(
+        after command: TaskCommand,
+        taskIDsBeforeCommand: Set<UUID>,
+        tutorialTaskTitleBeforeCommand: String?
+    ) {
+        guard !hasCompletedTutorial else { return }
+        let addedTask = store.tasks.first { !taskIDsBeforeCommand.contains($0.id) }
+
+        switch tutorialStep {
+        case 0:
+            guard case .add = command, let addedTask, addedTask.isEvent else { return }
+            tutorialQuizID = addedTask.id
+            moveTutorial(to: 1)
+        case 1:
+            guard case .add = command, let addedTask, !addedTask.isEvent else { return }
+            tutorialTaskID = addedTask.id
+            moveTutorial(to: 2)
+        case 2:
+            guard case .rename = command,
+                  let tutorialTaskID,
+                  let tutorialTaskTitleBeforeCommand,
+                  let renamed = store.tasks.first(where: { $0.id == tutorialTaskID }),
+                  renamed.title != tutorialTaskTitleBeforeCommand else { return }
+            moveTutorial(to: 3)
+        case 3:
+            guard case .delete = command,
+                  let tutorialTaskID,
+                  !store.tasks.contains(where: { $0.id == tutorialTaskID }) else { return }
+            moveTutorial(to: 4)
+        default:
+            break
+        }
+    }
+
+    private func moveTutorial(to step: Int) {
+        withAnimation(motion) { tutorialStep = step }
+        commandBarIsFocused = false
+        guard step < 4 else { return }
+        Task { @MainActor in
+            await Task.yield()
+            commandBarIsFocused = true
         }
     }
 
