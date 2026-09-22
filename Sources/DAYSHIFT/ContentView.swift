@@ -81,7 +81,7 @@ struct ContentView: View {
                         calendarPage
                             .transition(.opacity)
                     } else {
-                        SettingsPage()
+                        SettingsPage(onShowTutorial: startTutorial)
                             .transition(.opacity)
                     }
                 }
@@ -338,6 +338,19 @@ struct ContentView: View {
     private func completeTutorial() {
         store.discardTasks(withIDs: Set([tutorialQuizID, tutorialTaskID].compactMap { $0 }))
         withAnimation(motion) { hasCompletedTutorial = true }
+    }
+
+    private func startTutorial() {
+        store.discardTasks(withIDs: Set([tutorialQuizID, tutorialTaskID].compactMap { $0 }))
+        tutorialStep = 0
+        tutorialQuizID = nil
+        tutorialTaskID = nil
+        tutorialTaskTitleFrame = .zero
+        input = ""
+        feedback = nil
+        page = .todo
+        withAnimation(motion) { hasCompletedTutorial = false }
+        commandBarIsFocused = true
     }
 
     private var classPanel: some View {
@@ -1182,7 +1195,7 @@ private struct DetailPanel: ViewModifier {
     }
 }
 
-private struct SubtleHover: ViewModifier {
+struct SubtleHover: ViewModifier {
     @State private var isHovered = false
 
     func body(content: Content) -> some View {

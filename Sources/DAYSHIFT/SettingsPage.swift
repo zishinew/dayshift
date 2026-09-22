@@ -4,6 +4,8 @@ import SwiftUI
 @MainActor
 struct SettingsPage: View {
     @Environment(AppearanceSettings.self) private var appearance
+    let onShowTutorial: () -> Void
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
@@ -31,6 +33,14 @@ struct SettingsPage: View {
                             .font(.custom(appearance.fontName, size: appearance.scaled(15)))
                     }
                     .toggleStyle(.checkbox)
+                }
+
+                settingSection("help") {
+                    Button("show tutorial again", action: onShowTutorial)
+                        .font(.custom(appearance.fontName, size: appearance.scaled(15)))
+                        .buttonStyle(.plain)
+                        .foregroundStyle(appearance.textColor)
+                        .modifier(SubtleHover())
                 }
 
                 Button("reset appearance") { withAnimation(.easeInOut(duration: 0.15)) { appearance.reset() } }
