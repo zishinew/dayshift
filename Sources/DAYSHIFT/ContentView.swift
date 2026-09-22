@@ -165,7 +165,6 @@ struct ContentView: View {
     private func tutorialOverlay(in size: CGSize, spotlight: CGRect) -> some View {
         ZStack(alignment: .topLeading) {
             TutorialDimmer(spotlight: spotlight)
-                .ignoresSafeArea()
                 .allowsHitTesting(false)
 
             tutorialCard
