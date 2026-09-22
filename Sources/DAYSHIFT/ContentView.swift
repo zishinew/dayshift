@@ -25,7 +25,7 @@ private struct TutorialDimmer: View {
                             .fill(.black)
                             .frame(width: spotlight.width, height: spotlight.height)
                             .position(x: spotlight.midX, y: spotlight.midY)
-                            .blur(radius: 24)
+                            .blur(radius: 18)
                     }
                     .compositingGroup()
                     .luminanceToAlpha()
@@ -99,7 +99,6 @@ struct ContentView: View {
         .background(appearance.backgroundColor)
         .foregroundStyle(appearance.textColor)
         .preferredColorScheme(.light)
-        .coordinateSpace(name: "tutorialRoot")
         .toolbar {
 #if compiler(>=6.0)
             if #available(macOS 26.0, *) {
@@ -124,9 +123,14 @@ struct ContentView: View {
                 if !hasCompletedTutorial,
                    case .taskTitle = tutorialTarget,
                    !tutorialTaskTitleFrame.isEmpty {
+                    let overlayFrame = proxy.frame(in: .global)
+                    let localTitleFrame = tutorialTaskTitleFrame.offsetBy(
+                        dx: -overlayFrame.minX,
+                        dy: -overlayFrame.minY
+                    )
                     tutorialOverlay(
                         in: proxy.size,
-                        spotlight: tutorialSpotlight(around: tutorialTaskTitleFrame, in: proxy.size)
+                        spotlight: tutorialSpotlight(around: localTitleFrame, in: proxy.size)
                     )
                     .transition(.opacity)
                 } else if !hasCompletedTutorial, let anchor = anchors[tutorialTarget] {
@@ -187,7 +191,7 @@ struct ContentView: View {
                 height: size.height - anchor.minY + 76
             )
         case .taskTitle:
-            return anchor.insetBy(dx: -12, dy: -8)
+            return anchor.insetBy(dx: -18, dy: -15)
         case .classes:
             return CGRect(
                 x: anchor.minX - 16,
@@ -1004,7 +1008,7 @@ private struct TaskRow: View {
     private var tutorialTitleFrameReader: some View {
         if highlightsTitle {
             GeometryReader { proxy in
-                let frame = proxy.frame(in: .named("tutorialRoot"))
+                let frame = proxy.frame(in: .global)
                 Color.clear
                     .onAppear { onTitleFrameChange(frame) }
                     .onChange(of: frame) { _, newFrame in onTitleFrameChange(newFrame) }
