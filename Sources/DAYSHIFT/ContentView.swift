@@ -7,7 +7,9 @@ struct ContentView: View {
     @Environment(TaskStore.self) private var store
     @Environment(AppearanceSettings.self) private var appearance
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("hasCompletedTutorial") private var hasCompletedTutorial = false
     @State private var page: Page = .todo
+    @State private var tutorialStep = 0
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -76,6 +78,103 @@ struct ContentView: View {
 #endif
         }
         .background(WindowAccessor())
+        .overlay {
+            if !hasCompletedTutorial {
+                tutorial
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private var tutorial: some View {
+        ZStack {
+            appearance.backgroundColor
+                .ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                Text("\(tutorialStep + 1) / 3")
+                    .font(.custom(serif, size: appearance.scaled(12)))
+                    .foregroundStyle(appearance.textColor.opacity(0.45))
+                    .padding(.bottom, 24)
+
+                Text(tutorialTitle)
+                    .font(.custom(serif, size: appearance.scaled(24)))
+                    .padding(.bottom, 14)
+
+                Text(tutorialBody)
+                    .font(.custom(serif, size: appearance.scaled(16)))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .foregroundStyle(appearance.textColor.opacity(0.72))
+                    .padding(.bottom, 18)
+
+                Text(tutorialExample)
+                    .font(.custom(serif, size: appearance.scaled(15)))
+                    .italic()
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 34)
+
+                HStack(spacing: 22) {
+                    Button("skip") { completeTutorial() }
+                        .foregroundStyle(appearance.textColor.opacity(0.5))
+                        .modifier(SubtleHover())
+
+                    Button(tutorialStep == 2 ? "done" : "next") {
+                        advanceTutorial()
+                    }
+                    .modifier(SubtleHover())
+                }
+                .buttonStyle(.plain)
+                .font(.custom(serif, size: appearance.scaled(15)))
+            }
+            .frame(maxWidth: 460)
+            .padding(40)
+            .id(tutorialStep)
+            .transition(.opacity.combined(with: .move(edge: .trailing)))
+        }
+        .foregroundStyle(appearance.textColor)
+        .animation(motion, value: tutorialStep)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Dayshift tutorial, step \(tutorialStep + 1) of 3")
+    }
+
+    private var tutorialTitle: String {
+        switch tutorialStep {
+        case 0: "type what you need"
+        case 1: "add your classes"
+        default: "see your calendar"
+        }
+    }
+
+    private var tutorialBody: String {
+        switch tutorialStep {
+        case 0:
+            "use the command bar at the bottom for everything—adding, completing, moving, renaming, or removing tasks."
+        case 1:
+            "tell dayshift which classes you have. class names will then autocomplete while you add schoolwork."
+        default:
+            "choose calendar at the top to see the month. scroll to move between months, or change to arrows in settings."
+        }
+    }
+
+    private var tutorialExample: String {
+        switch tutorialStep {
+        case 0: "“quiz next wednesday”  ·  “move quiz to friday”"
+        case 1: "“i have classes math237, cs136”"
+        default: "“show calendar”"
+        }
+    }
+
+    private func advanceTutorial() {
+        guard tutorialStep < 2 else {
+            completeTutorial()
+            return
+        }
+        withAnimation(motion) { tutorialStep += 1 }
+    }
+
+    private func completeTutorial() {
+        withAnimation(motion) { hasCompletedTutorial = true }
     }
 
     private var classPanel: some View {
