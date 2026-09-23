@@ -48,6 +48,20 @@ final class NaturalLanguageParserTests: XCTestCase {
         }
     }
 
+    func testSpacedMeridiemIsPartOfTimeAndNotTheTitle() {
+        let parser = NaturalLanguageParser(calendar: calendar)
+        for command in ["quiz tomorrow at 7 pm", "quiz tomorrow 7 pm", "quiz tomorrow 7pm"] {
+            let task = parser.parse(command, now: Date())
+            XCTAssertEqual(calendar.component(.hour, from: task.dueDate), 19, command)
+            XCTAssertEqual(task.title, "Quiz", command)
+        }
+
+        let noon = parser.parse("quiz tomorrow at 12:30 pm", now: Date())
+        XCTAssertEqual(calendar.component(.hour, from: noon.dueDate), 12)
+        XCTAssertEqual(calendar.component(.minute, from: noon.dueDate), 30)
+        XCTAssertEqual(noon.title, "Quiz")
+    }
+
     func testAssessmentLanguageCreatesAnEvent() throws {
         let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-18T12:00:00Z"))
         let parser = NaturalLanguageParser(calendar: calendar)

@@ -30,6 +30,14 @@ final class TaskCommandInterpreterTests: XCTestCase {
             interpreter.interpret("move quiz to 8", now: now),
             .setTime(query: "quiz", hour: 8, minute: 0)
         )
+        XCTAssertEqual(
+            interpreter.interpret("set quiz time to 7 pm", now: now),
+            .setTime(query: "quiz", hour: 19, minute: 0)
+        )
+        XCTAssertEqual(
+            interpreter.interpret("move quiz to 7 pm", now: now),
+            .setTime(query: "quiz", hour: 19, minute: 0)
+        )
     }
 
     func testDeleteCommand() {
