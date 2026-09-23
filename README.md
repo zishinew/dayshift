@@ -2,7 +2,7 @@
 
 minimal, natural-language task management for macOS.
 
-dayshift is a native SwiftUI app with a full-screen todo list, a calendar view, class-aware school task suggestions, priorities, due dates, and repeating tasks. Everything is controlled from the command bar at the bottom of the window.
+dayshift is a native SwiftUI app with a full-screen todo list, a calendar view, class-aware school task suggestions, priorities, due dates, and repeating tasks. Tasks are controlled from the command bar at the bottom of the window. Account and appearance controls live under the profile icon in the title bar.
 
 ## requirements
 
@@ -50,7 +50,11 @@ Upcoming alerts are on by default and can be turned off in settings. The app ask
 
 ## data
 
-Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No account or network connection is required.
+Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No account or network connection is required for local use. When signed in, Dayshift keeps an account-specific local cache and an offline change queue, then syncs through the configured Supabase project. Edits, deletions, and undo/redo are included. On first sign-in, existing guest tasks and classes are copied into the account cache without removing the guest originals. Changes made on another device are fetched when the app opens, becomes active, or checks for updates. If two devices edit the same item, the last change accepted by the server wins.
+
+Email/password sign-up normally requires confirming the email before signing in. The profile icon opens account and settings. Sessions are kept in the macOS Keychain. The bundled Supabase URL and publishable key are public client configuration, never a service-role secret. The database schema and per-user row-level-security policies are tracked in `supabase/migrations/`.
+
+The migrations are already applied to the Dayshift Supabase project bundled in this build. To point a fork at another project, apply the migrations there in filename order and replace `DayshiftSupabaseURL` and `DayshiftSupabasePublishableKey` in `Resources/Info.plist` with that project's API URL and publishable key. Never put a secret or service-role key in the app bundle.
 
 ## project layout
 

@@ -44,10 +44,12 @@ private struct TutorialDimmer: View {
 
 @MainActor
 struct ContentView: View {
-    private enum Page { case todo, calendar, settings }
+    private enum Page { case todo, calendar, settings, account }
 
     @Environment(TaskStore.self) private var store
     @Environment(AppearanceSettings.self) private var appearance
+    @Environment(CloudAccount.self) private var account
+    @Environment(CloudSync.self) private var sync
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("hasCompletedTutorial") private var hasCompletedTutorial = false
     @State private var page: Page = .todo
@@ -56,6 +58,7 @@ struct ContentView: View {
     @State private var tutorialTaskID: UUID?
     @State private var tutorialTaskTitleFrame = CGRect.zero
     @State private var openTaskDetail: OpenTaskDetail?
+    @State private var showProfileMenu = false
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -90,8 +93,11 @@ struct ContentView: View {
                     } else if page == .calendar {
                         calendarPage
                             .transition(.opacity)
-                    } else {
+                    } else if page == .settings {
                         SettingsPage(onShowTutorial: startTutorial)
+                            .transition(.opacity)
+                    } else {
+                        AccountPage()
                             .transition(.opacity)
                     }
                 }
@@ -99,8 +105,10 @@ struct ContentView: View {
                 .animation(motion, value: page)
                 .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.calendar: $0] }
 
-                classPanel
-                    .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.classes: $0] }
+                if page == .todo || page == .calendar {
+                    classPanel
+                        .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.classes: $0] }
+                }
             }
 
             commandBar
@@ -126,6 +134,9 @@ struct ContentView: View {
                 topToggle
             }
 #endif
+            ToolbarItem(placement: .primaryAction) {
+                profileButton
+            }
         }
         .background(WindowAccessor(tutorialDimmed: !hasCompletedTutorial))
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
@@ -427,13 +438,51 @@ struct ContentView: View {
                 modeButton("todo", active: page == .todo) { withAnimation(motion) { page = .todo } }
                 Text("/").foregroundStyle(appearance.textColor.opacity(0.5))
                 modeButton("calendar", active: page == .calendar) { withAnimation(motion) { page = .calendar } }
-                Text("/").foregroundStyle(appearance.textColor.opacity(0.5))
-                modeButton("settings", active: page == .settings) { withAnimation(motion) { page = .settings } }
             }
             Spacer()
         }
-        .frame(width: 280, height: 28)
+        .frame(width: 210, height: 28)
         .foregroundStyle(appearance.textColor)
+    }
+
+    private var profileButton: some View {
+        Button { showProfileMenu.toggle() } label: {
+            Image(systemName: "person.crop.circle")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(appearance.textColor)
+                .opacity(showProfileMenu ? 1 : 0.7)
+                .frame(width: 28, height: 28)
+        }
+        .buttonStyle(.plain)
+        .help(account.email ?? "account")
+        .popover(isPresented: $showProfileMenu, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(account.email?.lowercased() ?? "not signed in")
+                    .font(.custom(serif, size: appearance.scaled(12)))
+                    .foregroundStyle(appearance.textColor.opacity(0.55))
+                    .lineLimit(1)
+                Button("account") { page = .account; showProfileMenu = false }
+                Button("settings") { page = .settings; showProfileMenu = false }
+                if account.userID != nil {
+                    Text(sync.status)
+                        .font(.custom(serif, size: appearance.scaled(12)))
+                        .foregroundStyle(appearance.textColor.opacity(0.55))
+                    Button("sign out") {
+                        showProfileMenu = false
+                        Task {
+                            await account.signOut()
+                            page = .todo
+                        }
+                    }
+                }
+            }
+            .font(.custom(serif, size: appearance.scaled(15)))
+            .foregroundStyle(appearance.textColor)
+            .buttonStyle(.plain)
+            .frame(width: 185, alignment: .leading)
+            .padding(18)
+            .background(appearance.backgroundColor)
+        }
     }
 
     private func modeButton(_ title: String, active: Bool, action: @escaping () -> Void) -> some View {

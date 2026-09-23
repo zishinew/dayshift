@@ -14,8 +14,10 @@ final class TaskStore {
     private var undoStack: [Snapshot] = []
     private var redoStack: [Snapshot] = []
     @ObservationIgnored private var completionDeletionTasks: [UUID: Task<Void, Never>] = [:]
-    private let fileURL: URL
-    private let classesURL: URL
+    private let guestFileURL: URL
+    private let guestClassesURL: URL
+    private var fileURL: URL
+    private var classesURL: URL
     private let completionDelayNanoseconds: UInt64
 
     var canUndo: Bool { !undoStack.isEmpty }
@@ -24,15 +26,76 @@ final class TaskStore {
     init(fileURL: URL? = nil, completionDelayNanoseconds: UInt64 = 2_000_000_000) {
         self.completionDelayNanoseconds = completionDelayNanoseconds
         if let fileURL {
+            self.guestFileURL = fileURL
+            self.guestClassesURL = fileURL.deletingLastPathComponent().appendingPathComponent("classes.json")
             self.fileURL = fileURL
             self.classesURL = fileURL.deletingLastPathComponent().appendingPathComponent("classes.json")
         } else {
             let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            self.fileURL = base.appending(path: "DAYSHIFT/tasks.json")
-            self.classesURL = base.appending(path: "DAYSHIFT/classes.json")
+            self.guestFileURL = base.appending(path: "DAYSHIFT/tasks.json")
+            self.guestClassesURL = base.appending(path: "DAYSHIFT/classes.json")
+            self.fileURL = guestFileURL
+            self.classesURL = guestClassesURL
         }
         load()
         loadClasses()
+        reconcileCompletionDeletions()
+    }
+
+    /// Each account has a separate local cache. Existing guest data is copied
+    /// once into a new account cache; signing out restores the untouched guest data.
+    @discardableResult
+    func useAccount(_ userID: UUID?) -> Bool {
+        completionDeletionTasks.values.forEach { $0.cancel() }
+        completionDeletionTasks.removeAll()
+        undoStack.removeAll()
+        redoStack.removeAll()
+
+        guard let userID else {
+            fileURL = guestFileURL
+            classesURL = guestClassesURL
+            tasks = []
+            classes = []
+            load()
+            loadClasses()
+            reconcileCompletionDeletions()
+            return false
+        }
+
+        let accountDirectory = guestFileURL.deletingLastPathComponent()
+            .appending(path: "accounts/\(userID.uuidString.lowercased())")
+        fileURL = accountDirectory.appendingPathComponent("tasks.json")
+        classesURL = accountDirectory.appendingPathComponent("classes.json")
+        let isNewAccountCache = !FileManager.default.fileExists(atPath: fileURL.path)
+        tasks = []
+        classes = []
+        if isNewAccountCache {
+            tasks = (try? Data(contentsOf: guestFileURL)).flatMap { try? JSONDecoder().decode([TaskItem].self, from: $0) } ?? []
+            classes = (try? Data(contentsOf: guestClassesURL)).flatMap { try? JSONDecoder().decode([ClassItem].self, from: $0) } ?? []
+            save()
+            saveClasses()
+        } else {
+            load()
+            loadClasses()
+        }
+        reconcileCompletionDeletions()
+        return isNewAccountCache
+    }
+
+    func applySyncedChanges(_ changes: [SyncChange]) {
+        guard !changes.isEmpty else { return }
+        for change in changes {
+            switch change.entityType {
+            case .task:
+                tasks.removeAll { $0.id == change.entityID }
+                if let task = change.task { tasks.append(task) }
+            case .classItem:
+                classes.removeAll { $0.id == change.entityID }
+                if let classItem = change.classItem { classes.append(classItem) }
+            }
+        }
+        save()
+        saveClasses()
         reconcileCompletionDeletions()
     }
 
