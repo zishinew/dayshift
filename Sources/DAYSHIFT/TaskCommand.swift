@@ -317,7 +317,7 @@ struct TaskCommandInterpreter {
     }
 
     private func isTimeOnly(_ value: String) -> Bool {
-        value.range(of: #"^\s*(?:(?:at|by|around)\s+)?(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|(?:[01]?\d|2[0-3]):[0-5]\d|noon|midnight)\s*$"#, options: [.regularExpression, .caseInsensitive]) != nil
+        value.range(of: #"^\s*(?:(?:at|by|around)\s+)?(?:(?:0?[1-9]|1[0-2])(?::[0-5]\d)?\s*(?:am|pm)|(?:[01]?\d|2[0-3])(?::[0-5]\d)?|noon|midnight)\s*$"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
     private func quantity(_ value: String) -> Int? {

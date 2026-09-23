@@ -20,6 +20,18 @@ final class TaskCommandInterpreterTests: XCTestCase {
         )
     }
 
+    func testBareHourWorksWhenChangingOrMovingTaskTime() {
+        let interpreter = TaskCommandInterpreter()
+        XCTAssertEqual(
+            interpreter.interpret("set quiz time to 2", now: now),
+            .setTime(query: "quiz", hour: 14, minute: 0)
+        )
+        XCTAssertEqual(
+            interpreter.interpret("move quiz to 8", now: now),
+            .setTime(query: "quiz", hour: 8, minute: 0)
+        )
+    }
+
     func testDeleteCommand() {
         XCTAssertEqual(TaskCommandInterpreter().interpret("remove quiz", now: now), .delete("quiz"))
     }

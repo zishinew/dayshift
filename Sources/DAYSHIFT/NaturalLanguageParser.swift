@@ -315,27 +315,27 @@ struct NaturalLanguageParser {
         let text = normalizingLanguage(in: input).lowercased()
         if text.range(of: #"\bnoon\b"#, options: .regularExpression) != nil { return (12, 0) }
         if text.range(of: #"\bmidnight\b"#, options: .regularExpression) != nil { return (0, 0) }
-        let twelveHour = #"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b"#
-        let twentyFourHour = #"\b(?:at|by|around)\s+([01]?\d|2[0-3]):([0-5]\d)\b"#
-        guard let regex = try? NSRegularExpression(pattern: twelveHour + "|" + twentyFourHour, options: [.caseInsensitive]),
-              let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) else { return nil }
+        let explicitMeridiem = #"\b(0?[1-9]|1[0-2])(?::([0-5]\d))?\s*(am|pm)\b"#
+        let contextualTime = #"\b(?:at|by|around)\s+([01]?\d|2[0-3])(?::([0-5]\d))?\b"#
+        let standaloneTime = #"^\s*([01]?\d|2[0-3])(?::([0-5]\d))?\s*$"#
+        let patterns = [explicitMeridiem, contextualTime, standaloneTime]
+        for (index, pattern) in patterns.enumerated() {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
+                  let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
+                  let hourRange = Range(match.range(at: 1), in: text),
+                  var hour = Int(text[hourRange]) else { continue }
 
-        let isTwelveHour = match.range(at: 1).location != NSNotFound
-        let hourIndex = isTwelveHour ? 1 : 4
-        let minuteIndex = isTwelveHour ? 2 : 5
-        guard let hourRange = Range(match.range(at: hourIndex), in: text), var hour = Int(text[hourRange]) else { return nil }
-
-        var minute = 0
-        if match.range(at: minuteIndex).location != NSNotFound,
-           let minuteRange = Range(match.range(at: minuteIndex), in: text) {
-            minute = Int(text[minuteRange]) ?? 0
+            let minute = Range(match.range(at: 2), in: text).flatMap { Int(text[$0]) } ?? 0
+            if index == 0 {
+                let marker = Range(match.range(at: 3), in: text).map { String(text[$0]).lowercased() } ?? "am"
+                if marker == "pm", hour < 12 { hour += 12 }
+                if marker == "am", hour == 12 { hour = 0 }
+            } else if (1...6).contains(hour) {
+                hour += 12
+            }
+            return (hour, minute)
         }
-        if isTwelveHour {
-            let marker = Range(match.range(at: 3), in: text).map { String(text[$0]).lowercased() } ?? "am"
-            if marker == "pm", hour < 12 { hour += 12 }
-            if marker == "am", hour == 12 { hour = 0 }
-        }
-        return (hour, minute)
+        return nil
     }
 
     private func cleanedTitle(from input: String) -> String {

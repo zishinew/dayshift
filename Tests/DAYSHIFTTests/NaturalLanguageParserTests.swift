@@ -28,6 +28,26 @@ final class NaturalLanguageParserTests: XCTestCase {
         XCTAssertFalse(result.isEvent)
     }
 
+    func testBareHoursUseReasonableMorningAndAfternoonDefaults() {
+        let parser = NaturalLanguageParser(calendar: calendar)
+        let examples: [(String, Int, Int)] = [
+            ("quiz today at 2", 14, 0),
+            ("quiz today at 6:30", 18, 30),
+            ("quiz today at 7", 7, 0),
+            ("quiz today at 11:15", 11, 15),
+            ("quiz today at 12", 12, 0),
+            ("quiz today at 14:30", 14, 30),
+            ("quiz today at 2am", 2, 0),
+            ("quiz today at 8pm", 20, 0)
+        ]
+
+        for (command, expectedHour, expectedMinute) in examples {
+            let dueDate = parser.parse(command, now: Date()).dueDate
+            XCTAssertEqual(calendar.component(.hour, from: dueDate), expectedHour, command)
+            XCTAssertEqual(calendar.component(.minute, from: dueDate), expectedMinute, command)
+        }
+    }
+
     func testAssessmentLanguageCreatesAnEvent() throws {
         let now = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-18T12:00:00Z"))
         let parser = NaturalLanguageParser(calendar: calendar)
