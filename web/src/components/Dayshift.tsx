@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, CircleUserRound, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import type { User } from '@supabase/supabase-js';
+import Tutorial from './Tutorial';
 import { interpret, type Command } from '@/lib/commands';
 import { applyLocal, readLocal, syncNow } from '@/lib/sync';
 import { supabase } from '@/lib/supabase';
@@ -41,6 +43,7 @@ function colorLuminance(hex: string) {
 }
 
 export default function Dayshift() {
+  const reducedMotion = useReducedMotion();
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot);
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
@@ -336,39 +339,43 @@ export default function Dayshift() {
       </div>
       <div className="profile-wrap" onClick={event => event.stopPropagation()}>
         <button className="profile-trigger" aria-label="profile" aria-expanded={profileOpen} onClick={() => { setProfileOpen(!profileOpen); setPopover(null); }}><CircleUserRound size={24} strokeWidth={1.5} /></button>
-        {profileOpen && <div className="profile-menu">
+        <AnimatePresence>{profileOpen && <motion.div className="profile-menu" initial={reducedMotion ? false : { opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.99 }} transition={{ duration: reducedMotion ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}>
           <p className="subtle small truncate">{user?.email?.toLowerCase() ?? 'not signed in'}</p>
           {user ? <button onClick={() => openModal('account')}>account</button> : <><button onClick={() => openModal('login')}>log in</button><button onClick={() => openModal('signup')}>sign up</button></>}
           <button onClick={() => openModal('settings')}>settings</button>
           {user && <><p className="subtle small">{syncStatus}</p><button onClick={async () => { setProfileOpen(false); await supabase?.auth.signOut(); }}>sign out</button></>}
-        </div>}
+        </motion.div>}</AnimatePresence>
       </div>
     </header>
 
     <div className="app-body">
       <main className={page === 'calendar' ? 'main-panel calendar-main' : 'main-panel'}>
+      <AnimatePresence mode="wait" initial={false}>
+      <motion.div key={page} className="page-layer" initial={reducedMotion ? false : { opacity: 0, y: 7 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: reducedMotion ? 0 : 0.25, ease: [0.22, 1, 0.36, 1] }}>
         {page === 'todo' ? <div className="todo-content">
           <div className="date-heading-row"><h1>{formatDate(selectedDate, { weekday: 'long', month: 'long', day: 'numeric' })}</h1><div className="sort-wrap"><span className="subtle">sort</span><select aria-label="sort tasks" value={sort} onChange={event => setSort(event.target.value as SortMode)}><option value="date">date</option><option value="priority">priority</option><option value="alphabetical">alphabetical</option><option value="added">added</option></select></div></div>
           {displayedTasks.length ? <TaskSections tasks={displayedTasks} showDate={false} row={renderTask} /> : <p className="empty-state">{viewingToday ? 'no tasks today' : 'nothing scheduled'}</p>}
           {viewingToday && <section className="upcoming-section"><h2>upcoming</h2>{futureTasks.length ? <TaskSections tasks={futureTasks} showDate row={renderTask} /> : <p className="empty-state small">nothing upcoming</p>}</section>}
           {!viewingToday && <button className="quiet-link back-today" onClick={() => setSelectedDate(today)}>back to today</button>}
         </div> : <Calendar month={month} setMonth={setMonth} tasks={activeTasks} selectedDate={selectedDate} onSelect={date => { setSelectedDate(date); setPage('todo'); }} scroll={appearance.scrollCalendar} />}
+      </motion.div>
+      </AnimatePresence>
       </main>
-      <aside className="classes-panel"><h2>classes</h2>{snapshot.classes.length ? [...snapshot.classes].sort((a, b) => a.code.localeCompare(b.code)).map(item => {
+      <aside className="classes-panel"><h2>classes</h2><AnimatePresence initial={false}>{snapshot.classes.length ? [...snapshot.classes].sort((a, b) => a.code.localeCompare(b.code)).map(item => {
         const items = activeTasks.filter(task => !task.isComplete && task.classCode?.toLowerCase() === item.code.toLowerCase() && dateOf(task) >= today).sort((a, b) => a.dueDate - b.dueDate);
-        return <div className="class-row" key={item.id}><div>{item.code.toLowerCase()}</div><p className="subtle small">{items.length} {items.length === 1 ? 'task' : 'tasks'}{items[0] ? ` · next ${dateLabel(dateOf(items[0]))}` : ''}</p></div>;
-      }) : <p className="subtle small">no classes</p>}</aside>
+        return <motion.div layout="position" className="class-row" key={item.id} initial={reducedMotion ? false : { opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.25 }}><div>{item.code.toLowerCase()}</div><p className="subtle small">{items.length} {items.length === 1 ? 'task' : 'tasks'}{items[0] ? ` · next ${dateLabel(dateOf(items[0]))}` : ''}</p></motion.div>;
+      }) : <motion.p key="no-classes" className="subtle small" initial={reducedMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.2 }}>no classes</motion.p>}</AnimatePresence></aside>
     </div>
 
-    <div className="command-bar"><div className="command-line"><input ref={inputRef} aria-label="command" value={input} placeholder="type anything…" onChange={event => { setInput(event.target.value); setFeedback(''); }} onKeyDown={event => { if (event.key === 'Enter') submit(); if (event.key === 'Tab' && classSuggestion) { event.preventDefault(); acceptSuggestion(); } }} /><span className="subtle small return-label">return ↵</span></div>{appearance.hints && <p className="command-hint">{feedback || suggestion}</p>}</div>
+    <div className="command-bar"><div className="command-line"><input ref={inputRef} aria-label="command" value={input} placeholder="type anything…" onChange={event => { setInput(event.target.value); setFeedback(''); }} onKeyDown={event => { if (event.key === 'Enter') submit(); if (event.key === 'Tab' && classSuggestion) { event.preventDefault(); acceptSuggestion(); } }} /><span className="subtle small return-label">return ↵</span></div>{appearance.hints && <div className="command-hint-space"><AnimatePresence mode="wait" initial={false}><motion.p key={feedback ? `feedback:${feedback}` : input.trim() ? `suggestion:${classSuggestion?.code ?? 'command'}` : 'empty'} className="command-hint" initial={reducedMotion ? false : { opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -2 }} transition={{ duration: reducedMotion ? 0 : 0.18 }}>{feedback || suggestion}</motion.p></AnimatePresence></div>}</div>
 
-    {modal && <div className="modal-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setModal(null); }}><div className="modal-card" role="dialog" aria-modal="true" aria-label={modal}><button className="modal-close" aria-label="close" onClick={() => setModal(null)}><X size={18} strokeWidth={1.5} /></button>
-      {modal === 'settings' ? <><h2>settings</h2><p className="modal-section-label">appearance</p><SettingColor label="text colour" value={appearance.text} onChange={value => changeAppearance('text', value)} /><SettingColor label="background colour" value={appearance.background} onChange={value => changeAppearance('background', value)} /><div className="setting-row"><label htmlFor="font">font</label><select id="font" value={appearance.font} onChange={event => changeAppearance('font', event.target.value)}>{['Times New Roman', 'Baskerville', 'Georgia', 'Palatino'].map(font => <option key={font}>{font}</option>)}</select></div><div className="setting-row"><label htmlFor="size">text size</label><input id="size" type="range" min="14" max="24" value={appearance.size} onChange={event => changeAppearance('size', Number(event.target.value))} /><span>{appearance.size}</span></div><div className="setting-row"><label htmlFor="spacing">row spacing</label><input id="spacing" type="range" min="4" max="20" value={appearance.spacing} onChange={event => changeAppearance('spacing', Number(event.target.value))} /><span>{appearance.spacing}</span></div><div className="setting-row"><label htmlFor="hints">command hints</label><input id="hints" type="checkbox" checked={appearance.hints} onChange={event => changeAppearance('hints', event.target.checked)} /></div><div className="setting-row"><label htmlFor="calendar-mode">calendar navigation</label><select id="calendar-mode" value={appearance.scrollCalendar ? 'scroll' : 'arrows'} onChange={event => changeAppearance('scrollCalendar', event.target.value === 'scroll')}><option value="scroll">scroll</option><option value="arrows">arrows</option></select></div><div className="modal-actions"><button onClick={() => setAppearance(defaultAppearance)}>restore defaults</button><button onClick={() => { setModal(null); setShowTutorial(true); setTutorialStep(0); }}>show tutorial again</button></div></>
+    <AnimatePresence>{modal && <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reducedMotion ? 0 : 0.22 }} onMouseDown={event => { if (event.target === event.currentTarget) setModal(null); }}><motion.div className="modal-card" role="dialog" aria-modal="true" aria-label={modal} initial={reducedMotion ? false : { opacity: 0, y: 13, scale: 0.985 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 7, scale: 0.99 }} transition={{ duration: reducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }}><button className="modal-close" aria-label="close" onClick={() => setModal(null)}><X size={18} strokeWidth={1.5} /></button>
+      {modal === 'settings' ? <><h2>settings</h2><p className="modal-section-label">appearance</p><SettingColor label="text colour" value={appearance.text} onChange={value => changeAppearance('text', value)} /><SettingColor label="background colour" value={appearance.background} onChange={value => changeAppearance('background', value)} /><div className="setting-row"><label htmlFor="font">font</label><select id="font" value={appearance.font} onChange={event => changeAppearance('font', event.target.value)}>{['Times New Roman', 'Baskerville', 'Georgia', 'Palatino'].map(font => <option key={font}>{font}</option>)}</select></div><div className="setting-row"><label htmlFor="size">text size</label><input id="size" type="range" min="14" max="24" value={appearance.size} onChange={event => changeAppearance('size', Number(event.target.value))} /><span>{appearance.size}</span></div><div className="setting-row"><label htmlFor="spacing">row spacing</label><input id="spacing" type="range" min="4" max="20" value={appearance.spacing} onChange={event => changeAppearance('spacing', Number(event.target.value))} /><span>{appearance.spacing}</span></div><div className="setting-row"><label htmlFor="hints">command hints</label><input id="hints" type="checkbox" checked={appearance.hints} onChange={event => changeAppearance('hints', event.target.checked)} /></div><div className="setting-row"><label htmlFor="calendar-mode">calendar navigation</label><select id="calendar-mode" value={appearance.scrollCalendar ? 'scroll' : 'arrows'} onChange={event => changeAppearance('scrollCalendar', event.target.value === 'scroll')}><option value="scroll">scroll</option><option value="arrows">arrows</option></select></div><div className="modal-actions"><button onClick={() => setAppearance(defaultAppearance)}>restore defaults</button><button onClick={() => { setModal(null); setPage('todo'); setSelectedDate(startOfDay(new Date())); setTutorialTaskId(null); tutorialQuizId.current = null; setInput(''); setFeedback(''); setTutorialStep(0); setShowTutorial(true); }}>show tutorial again</button></div></>
         : modal === 'account' ? <><h2>account</h2><p className="account-email">{user?.email?.toLowerCase()}</p><p className="subtle">{syncStatus}</p><p className="subtle account-copy">your tasks and classes sync with the mac app when you use the same account.</p><button className="solid-button" onClick={() => void pull(user!.id)}>sync now</button></>
         : <><h2>{modal === 'signup' ? 'sign up' : 'log in'}</h2><form className="auth-form" onSubmit={event => { event.preventDefault(); void submitAuth(); }}><input type="email" autoComplete="email" required placeholder="email" aria-label="email" value={authEmail} onChange={event => setAuthEmail(event.target.value)} /><input type="password" autoComplete={modal === 'signup' ? 'new-password' : 'current-password'} minLength={6} required placeholder="password" aria-label="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} /><button className="solid-button" type="submit" disabled={busy}>{busy ? 'one moment…' : modal === 'signup' ? 'create account' : 'log in'}</button></form>{authError && <p className="auth-error">{authError}</p>}<p className="auth-switch subtle">{modal === 'signup' ? 'already have an account?' : 'new to dayshift?'} <button onClick={() => { setAuthError(''); setModal(modal === 'signup' ? 'login' : 'signup'); }}>{modal === 'signup' ? 'log in' : 'sign up'}</button></p><p className="subtle account-copy">{modal === 'signup' ? 'check your email to confirm your account, then sign in.' : 'your synced tasks will appear here after you sign in.'}</p></>}
-    </div></div>}
+    </motion.div></motion.div>}</AnimatePresence>
 
-    {showTutorial && <Tutorial step={tutorialStep} taskId={tutorialTaskId} onNext={() => { if (tutorialStep === 5) finishTutorial(); else { setTutorialStep(step => step + 1); if (tutorialStep === 4) setPage('calendar'); } }} onSkip={finishTutorial} />}
+    <AnimatePresence>{showTutorial && <Tutorial step={tutorialStep} taskId={tutorialTaskId} onNext={() => { if (tutorialStep === 5) finishTutorial(); else { setTutorialStep(step => step + 1); if (tutorialStep === 4) setPage('calendar'); } }} onSkip={finishTutorial} />}</AnimatePresence>
   </div>;
 
   function renderTask(task: Task, showDate: boolean) {
@@ -377,7 +384,7 @@ export default function Dayshift() {
 
   function finishTutorial() {
     const sampleIds = new Set([tutorialQuizId.current, tutorialTaskId].filter((id): id is string => !!id));
-    if (sampleIds.size) commit({ ...snapshot, tasks: snapshot.tasks.filter(task => !sampleIds.has(task.id) || !task.title.includes('tutorial')) });
+    if (sampleIds.size) commit({ ...snapshot, tasks: snapshot.tasks.filter(task => !sampleIds.has(task.id)) });
     localStorage.setItem('dayshift:web:tutorial-complete', 'true');
     setShowTutorial(false);
   }
@@ -386,7 +393,7 @@ export default function Dayshift() {
 function TaskSections({ tasks, showDate, row }: { tasks: Task[]; showDate: boolean; row: (task: Task, showDate: boolean) => React.ReactNode }) {
   const events = tasks.filter(task => task.isEvent);
   const todos = tasks.filter(task => !task.isEvent);
-  return <div className="task-sections">{events.length > 0 && <div className="task-group"><h3>events</h3>{events.map(task => row(task, showDate))}</div>}{todos.length > 0 && <div className="task-group"><h3>tasks</h3>{todos.map(task => row(task, showDate))}</div>}</div>;
+  return <div className="task-sections">{events.length > 0 && <div className="task-group"><h3>events</h3><AnimatePresence initial={false}>{events.map(task => row(task, showDate))}</AnimatePresence></div>}{todos.length > 0 && <div className="task-group"><h3>tasks</h3><AnimatePresence initial={false}>{todos.map(task => row(task, showDate))}</AnimatePresence></div>}</div>;
 }
 
 function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDelete, onRename, onDate, onTime, onPriority, onRepeat }: {
@@ -395,6 +402,7 @@ function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDele
   onDate: (date: Date) => void; onTime: (time: string) => void; onPriority: (priority: Priority) => void;
   onRepeat: (rule: RepeatRule | null) => void;
 }) {
+  const reducedMotion = useReducedMotion();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [editingTime, setEditingTime] = useState(false);
@@ -403,7 +411,7 @@ function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDele
     event.stopPropagation(); setPopover(popover?.id === task.id && popover.kind === kind ? null : { id: task.id, kind });
   };
   const saveTitle = () => { if (title.trim() && title.trim() !== task.title) onRename(title.trim()); else setTitle(task.title); setEditing(false); };
-  return <div className={`task-row ${fading ? 'fading' : ''}`} onContextMenu={event => { event.preventDefault(); onDelete(); }}>
+  return <motion.div layout="position" data-task-row-id={task.id} className="task-row" initial={reducedMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: fading ? 0 : 1, y: 0 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: reducedMotion ? 0 : fading ? 0.38 : 0.23 }, y: { duration: reducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }, layout: { type: 'spring', stiffness: 340, damping: 36 } }} onContextMenu={event => { event.preventDefault(); onDelete(); }}>
     {!task.isEvent && <button className="task-checkbox" aria-label={`mark ${task.title} ${task.isComplete ? 'incomplete' : 'complete'}`} onClick={onToggle}>{task.isComplete && <span>✓</span>}</button>}
     <div className={`task-copy ${task.isEvent ? 'event-copy' : ''}`}>
       {editing ? <input className="title-editor" autoFocus value={title} onChange={event => setTitle(event.target.value)} onBlur={saveTitle} onKeyDown={event => { if (event.key === 'Enter') saveTitle(); if (event.key === 'Escape') { setTitle(task.title); setEditing(false); } }} /> : <button className="task-title" data-task-id={task.id} title="click to rename · right-click to delete" onClick={() => setEditing(true)}>{task.title.toLowerCase()}</button>}
@@ -417,28 +425,60 @@ function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDele
         {task.classCode && <><span>·</span><span>{task.classCode.toLowerCase()}</span></>}
       </div>
     </div>
-  </div>;
+  </motion.div>;
 }
 
 function Calendar({ month, setMonth, tasks, selectedDate, onSelect, scroll }: { month: Date; setMonth: React.Dispatch<React.SetStateAction<Date>>; tasks: Task[]; selectedDate: Date; onSelect: (date: Date) => void; scroll: boolean }) {
-  const wheelLock = useRef(false);
+  const reducedMotion = useReducedMotion();
+  const busy = useRef(false);
+  const pendingWheel = useRef(0);
+  const wheelDistance = useRef(0);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [direction, setDirection] = useState(0);
-  const move = (amount: number) => { setDirection(amount); setMonth(current => nextMonth(current, amount)); };
-  const onWheel = (event: React.WheelEvent) => {
-    if (!scroll || Math.abs(event.deltaY) < 2 || wheelLock.current) return;
-    wheelLock.current = true; move(event.deltaY > 0 ? 1 : -1);
-    setTimeout(() => { wheelLock.current = false; }, 420);
+  useEffect(() => () => { if (transitionTimer.current) clearTimeout(transitionTimer.current); }, []);
+  const move = (amount: number) => {
+    if (busy.current) { pendingWheel.current = amount; return; }
+    busy.current = true;
+    setDirection(amount);
+    setMonth(current => nextMonth(current, amount));
+    transitionTimer.current = setTimeout(() => {
+      busy.current = false;
+      const next = pendingWheel.current;
+      pendingWheel.current = 0;
+      if (next) move(next);
+    }, reducedMotion ? 40 : 580);
   };
+  const onWheel = (event: React.WheelEvent) => {
+    if (!scroll || Math.abs(event.deltaY) < 1) return;
+    wheelDistance.current += event.deltaY;
+    if (Math.abs(wheelDistance.current) < 45) return;
+    const amount = wheelDistance.current > 0 ? 1 : -1;
+    wheelDistance.current = 0;
+    move(amount);
+  };
+  return <div className="calendar-viewport" onWheel={onWheel}>
+    <AnimatePresence initial={false} custom={direction}>
+      <motion.div key={`${month.getFullYear()}-${month.getMonth()}`} data-calendar-active="true" className="calendar-content"
+        custom={direction}
+        variants={{ enter: (dir: number) => ({ y: reducedMotion ? '0%' : `${dir * 100}%`, opacity: reducedMotion ? 1 : 0.94 }), center: { y: '0%', opacity: 1 }, exit: (dir: number) => ({ y: reducedMotion ? '0%' : `${-dir * 100}%`, opacity: reducedMotion ? 1 : 0.94 }) }}
+        initial="enter" animate="center" exit="exit"
+        transition={{ duration: reducedMotion ? 0 : 0.56, ease: [0.22, 0.88, 0.28, 1] }}>
+        <div className="calendar-inner"><div className="calendar-title">{!scroll && <button aria-label="previous month" onClick={() => move(-1)}><ChevronLeft size={18} /></button>}<h1>{formatDate(month, { month: 'long', year: 'numeric' })}</h1>{!scroll && <button aria-label="next month" onClick={() => move(1)}><ChevronRight size={18} /></button>}</div>
+          <CalendarGrid month={month} tasks={tasks} selectedDate={selectedDate} onSelect={onSelect} />
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  </div>;
+}
+
+function CalendarGrid({ month, tasks, selectedDate, onSelect }: { month: Date; tasks: Task[]; selectedDate: Date; onSelect: (date: Date) => void }) {
   const first = new Date(month.getFullYear(), month.getMonth(), 1);
   const leading = first.getDay();
   const days = Array.from({ length: 42 }, (_, index) => new Date(month.getFullYear(), month.getMonth(), index - leading + 1));
-  return <div className="calendar-viewport" onWheel={onWheel}><div className={`calendar-content ${direction ? `slide-${direction > 0 ? 'up' : 'down'}` : ''}`} key={`${month.getFullYear()}-${month.getMonth()}`}>
-    <div className="calendar-title">{!scroll && <button aria-label="previous month" onClick={() => move(-1)}><ChevronLeft size={18} /></button>}<h1>{formatDate(month, { month: 'long', year: 'numeric' })}</h1>{!scroll && <button aria-label="next month" onClick={() => move(1)}><ChevronRight size={18} /></button>}</div>
-    <div className="calendar-grid">{['s', 'm', 't', 'w', 't', 'f', 's'].map((day, index) => <div className="weekday" key={index}>{day}</div>)}{days.map(date => {
+  return <div className="calendar-grid">{['s', 'm', 't', 'w', 't', 'f', 's'].map((day, index) => <div className="weekday" key={index}>{day}</div>)}{days.map(date => {
       const items = tasks.filter(task => isSameDay(dateOf(task), date)).slice(0, 2);
       return <button className={`calendar-day ${date.getMonth() === month.getMonth() ? '' : 'outside'} ${isSameDay(date, selectedDate) ? 'selected' : ''}`} key={dayKey(date)} onClick={() => onSelect(date)}><span>{date.getDate()}</span>{items.map(item => <small key={item.id}>{item.title.toLowerCase()}</small>)}</button>;
-    })}</div>
-  </div></div>;
+    })}</div>;
 }
 
 function MiniCalendar({ date, onChoose }: { date: Date; onChoose: (date: Date) => void }) {
@@ -486,40 +526,6 @@ function hslToHex(hue: number, saturation: number, lightness: number): string {
   const m = l - chroma / 2;
   const rgb = hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
   return `#${rgb.map(channel => Math.round((channel + m) * 255).toString(16).padStart(2, '0')).join('')}`;
-}
-
-function Tutorial({ step, taskId, onNext, onSkip }: { step: number; taskId: string | null; onNext: () => void; onSkip: () => void }) {
-  const [target, setTarget] = useState<DOMRect | null>(null);
-  useEffect(() => {
-    const measure = () => {
-      const selector = step < 2 ? '.command-bar' : step < 4 && taskId ? `[data-task-id="${taskId}"]` : step === 4 ? '.classes-panel' : '.calendar-main';
-      setTarget(document.querySelector(selector)?.getBoundingClientRect() ?? null);
-    };
-    measure();
-    const frame = requestAnimationFrame(measure);
-    window.addEventListener('resize', measure);
-    window.addEventListener('scroll', measure, true);
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true); };
-  }, [step, taskId]);
-  const titles = ['add a sample event', 'now add a task', 'rename a task', 'remove a task', 'keep classes together', 'your month at a glance'];
-  const body = [
-    'the command bar understands ordinary language. try “tutorial quiz tomorrow”; dayshift recognises it as an event.',
-    'try “write tutorial notes tomorrow”. tasks have checkboxes; events do not.',
-    'click a task title to rename it. press return to save.',
-    'right-click a task or event to remove it immediately.',
-    'add classes with “i have classes math237, cs136”. press tab to accept a suggested class later.',
-    'your calendar keeps the same quiet layout. scroll to move between months, or choose arrows in settings.',
-  ];
-  const viewportWidth = typeof window === 'undefined' ? 1200 : window.innerWidth;
-  const viewportHeight = typeof window === 'undefined' ? 800 : window.innerHeight;
-  const x = target ? target.left + target.width / 2 : viewportWidth / 2;
-  const y = target ? target.top + target.height / 2 : viewportHeight / 2;
-  const wide = step < 2 || step === 5;
-  const cardStyle: React.CSSProperties = step < 2 ? { bottom: Math.min(viewportHeight - 290, (target?.height ?? 90) + 55), left: '50%', transform: 'translateX(-50%)' }
-    : step < 4 ? { top: Math.min(viewportHeight - 230, Math.max(80, y - 65)), left: Math.max(20, Math.min(viewportWidth - 460, (target?.right ?? 150) + 44)) }
-    : { top: Math.min(viewportHeight - 230, Math.max(90, y - 30)), left: step === 4 ? Math.max(24, (target?.left ?? viewportWidth) - 485) : Math.max(24, viewportWidth / 2 - 220) };
-  return <div className="tutorial-overlay" style={{ '--spot-x': `${x}px`, '--spot-y': `${y}px`, '--spot-w': `${wide ? Math.max(270, (target?.width ?? 400) * .7) : Math.max(95, (target?.width ?? 120) * .9)}px`, '--spot-h': `${step < 2 ? 150 : step === 4 ? Math.max(180, (target?.height ?? 200) * .62) : step === 5 ? 330 : 72}px` } as React.CSSProperties}>
-    <div className="tutorial-dimmer" /><button className="tutorial-skip" onClick={onSkip}>skip tutorial</button><div className="tutorial-card" style={cardStyle}><p className="subtle small">{step + 1} of 6</p><h2>{titles[step]}</h2><p>{body[step]}</p>{step < 4 ? <p className="subtle tutorial-prompt">{step < 2 ? 'type it below and press return' : step === 2 ? 'click the title to continue' : 'right-click the title to continue'}</p> : <button className="quiet-link" onClick={onNext}>{step === 5 ? 'finish' : 'next'} →</button>}</div></div>;
 }
 
 function preview(command: Command): string {

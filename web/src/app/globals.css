@@ -25,7 +25,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .subtle { opacity: .52; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .app-body { display: flex; flex: 1; min-height: 0; overflow: hidden; }
-.main-panel { flex: 1; min-width: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb,var(--ink) 15%,transparent) transparent; }
+.main-panel { flex: 1; min-width: 0; position: relative; overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb,var(--ink) 15%,transparent) transparent; }
+.page-layer { min-height: 100%; height: 100%; }
 .todo-content { width: min(100%, 796px); padding: 29px 38px 32px; }
 .date-heading-row { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
 .date-heading-row h1 { margin: 0 0 22px; font-weight: 400; font-size: calc(24px * var(--scale)); line-height: 1.18; }
@@ -37,8 +38,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .upcoming-section h2 { margin: 0 0 15px; font-size: calc(16px * var(--scale)); font-weight: 400; }
 .task-group + .task-group { margin-top: 17px; }
 .task-group h3 { font-size: calc(15px * var(--scale)); font-weight: 400; opacity: .52; margin: 0 0 5px; }
-.task-row { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 var(--row-space); padding: 2px 0 3px; transition: opacity .4s ease; }
-.task-row.fading { opacity: 0; }
+.task-row { display: flex; align-items: flex-start; gap: 12px; margin: 0 0 var(--row-space); padding: 2px 0 3px; }
 .task-checkbox { flex: 0 0 14px; width: 14px; height: 14px; margin-top: 5px; padding: 0; border: 1px solid var(--ink); border-radius: 2px; background: none; font-family: Arial, sans-serif; font-size: 12px; line-height: 11px; transition: background .18s ease, transform .18s ease; }
 .task-checkbox:hover { background: color-mix(in srgb, var(--ink) 9%, transparent); transform: scale(1.08); }
 .task-copy { min-width: 0; }
@@ -49,7 +49,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .task-meta { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-top: 2px; font-size: calc(12px * var(--scale)); line-height: 1.4; opacity: .52; }
 .task-meta button { padding: 0; border: 0; background: none; transition: opacity .18s ease; }
 .detail-wrap { position: relative; }
-.detail-popover { position: absolute; left: 0; top: calc(100% + 8px); min-width: 150px; z-index: 15; background: var(--paper); color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); border-radius: 10px; padding: 10px; box-shadow: 0 12px 32px #0002; opacity: 1; }
+.detail-popover { position: absolute; left: 0; top: calc(100% + 8px); min-width: 150px; z-index: 15; background: var(--paper); color: var(--ink); border: 1px solid color-mix(in srgb, var(--ink) 15%, transparent); border-radius: 10px; padding: 10px; box-shadow: 0 12px 32px #0002; opacity: 1; transform-origin: top left; animation: popover-in .2s cubic-bezier(.22,1,.36,1) both; }
+@keyframes popover-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .detail-popover input { border: 0; background: var(--paper); color: var(--ink); font-size: 13px; }
 .detail-popover.date-popover { display: flex; flex-direction: column; align-items: flex-start; gap: 9px; }
 .mini-calendar { width: 205px; opacity: 1; }
@@ -76,13 +77,11 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .command-line input::placeholder { color: var(--ink); opacity: .48; }
 .return-label { white-space: nowrap; }
 .command-hint { margin: 4px 0 0; opacity: .53; font-size: calc(12px * var(--scale)); min-height: 18px; }
+.command-hint-space { height: 22px; overflow: hidden; }
 .calendar-main { overflow: hidden; }
-.calendar-viewport { height: 100%; overflow: hidden; padding: 29px 38px 20px; margin-left: 252px; }
-.calendar-content { width: min(100%, 1040px); margin: 0 auto; }
-.calendar-content.slide-up { animation: arrive-up .46s cubic-bezier(.22,.88,.28,1); }
-.calendar-content.slide-down { animation: arrive-down .46s cubic-bezier(.22,.88,.28,1); }
-@keyframes arrive-up { from { transform: translateY(80px); opacity: .35; } to { transform: translateY(0); opacity: 1; } }
-@keyframes arrive-down { from { transform: translateY(-80px); opacity: .35; } to { transform: translateY(0); opacity: 1; } }
+.calendar-viewport { position: relative; height: 100%; overflow: hidden; margin-left: 252px; }
+.calendar-content { position: absolute; inset: 0; width: 100%; padding: 29px 38px 20px; background: var(--paper); will-change: transform; }
+.calendar-inner { width: min(100%, 1040px); margin: 0 auto; }
 .calendar-title { display: flex; justify-content: center; align-items: center; gap: 32px; min-height: 28px; margin-bottom: 22px; }
 .calendar-title h1 { margin: 0; font-size: calc(20px * var(--scale)); font-weight: 400; min-width: 190px; text-align: center; }
 .calendar-title button { border: 0; background: none; padding: 3px; transition: opacity .18s ease; }
@@ -95,10 +94,8 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .calendar-day.selected > span { font-weight: 700; border-top: 1px solid var(--ink); }
 .calendar-day span { font-size: calc(15px * var(--scale)); }
 .calendar-day small { max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: calc(12px * var(--scale)); }
-.modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: #0003; animation: fade-in .18s ease; }
-@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-.modal-card { position: relative; width: min(100%, 450px); max-height: min(85vh, 700px); overflow: auto; padding: 31px 36px 34px; background: var(--paper); color: var(--ink); border: 1px solid color-mix(in srgb,var(--ink) 8%,transparent); border-radius: 17px; box-shadow: 0 22px 65px #0002; animation: card-in .22s ease; }
-@keyframes card-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+.modal-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; background: #0003; }
+.modal-card { position: relative; width: min(100%, 450px); max-height: min(85vh, 700px); overflow: auto; padding: 31px 36px 34px; background: var(--paper); color: var(--ink); border: 1px solid color-mix(in srgb,var(--ink) 8%,transparent); border-radius: 17px; box-shadow: 0 22px 65px #0002; }
 .modal-card h2 { margin: 0 0 26px; font-size: calc(25px * var(--scale)); font-weight: 400; }
 .modal-close { position: absolute; right: 27px; top: 28px; border: 0; padding: 0; background: none; opacity: .5; }
 .modal-close:hover { opacity: 1; }
@@ -132,13 +129,23 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 1px s
 .account-copy { margin: 22px 0 0; font-size: calc(13px * var(--scale)); line-height: 1.4; }
 .account-email { margin: 0 0 12px; }
 .tutorial-overlay { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
-.tutorial-dimmer { position: absolute; inset: 0; background: #0008; mask-image: radial-gradient(ellipse var(--spot-w) var(--spot-h) at var(--spot-x) var(--spot-y), transparent 0%, transparent 38%, #000 100%); }
-.tutorial-skip { position: absolute; top: 20px; left: 24px; border: 0; background: none; color: white; font-size: 13px; pointer-events: auto; }
-.tutorial-card { position: absolute; width: min(calc(100% - 40px), 440px); padding: 26px 30px; border-radius: 15px; background: var(--paper); box-shadow: 0 18px 55px #0003; pointer-events: auto; }
-.tutorial-card h2 { margin: 12px 0 10px; font-size: 22px; font-weight: 400; }
-.tutorial-card p { line-height: 1.5; margin: 0 0 12px; }
-.tutorial-card .quiet-link { margin-top: 12px; }
-.tutorial-card .tutorial-prompt { font-size: 12px; margin: 14px 0 0; }
+.tutorial-shade { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tutorial-skip { position: absolute; top: 22px; left: 28px; border: 0; background: none; color: #fff; font-size: 13px; letter-spacing: .01em; opacity: .78; pointer-events: auto; transition: opacity .2s ease; }
+.tutorial-skip:hover { opacity: 1; }
+.tutorial-card { position: absolute; width: min(calc(100% - 32px), 380px); padding: 24px 27px 22px; border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent); border-radius: 13px; background: var(--paper); color: var(--ink); box-shadow: 0 18px 48px #0002; pointer-events: auto; }
+.tutorial-progress { display: flex; align-items: center; justify-content: space-between; gap: 28px; color: color-mix(in srgb, var(--ink) 50%, transparent); font-size: 11px; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.tutorial-progress i { font-style: normal; opacity: .55; margin: 0 2px; }
+.tutorial-steps { display: flex; gap: 4px; }
+.tutorial-steps b { display: block; width: 17px; height: 2px; background: color-mix(in srgb, var(--ink) 15%, transparent); border-radius: 2px; }
+.tutorial-steps b.seen { background: var(--ink); }
+.tutorial-card h2 { margin: 19px 0 10px; font-size: calc(21px * var(--scale)); font-weight: 400; line-height: 1.12; }
+.tutorial-body { margin: 0; font-size: calc(14px * var(--scale)); line-height: 1.45; color: color-mix(in srgb, var(--ink) 74%, transparent); }
+.tutorial-example { margin: 15px 0 0; font-size: calc(14px * var(--scale)); font-style: italic; }
+.tutorial-footer { margin-top: 19px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tutorial-footer p { margin: 0; font-size: calc(11px * var(--scale)); color: color-mix(in srgb, var(--ink) 47%, transparent); }
+.tutorial-footer button { border: 0; background: none; padding: 2px 0 2px 12px; font-size: calc(13px * var(--scale)); white-space: nowrap; transition: opacity .2s ease; }
+.tutorial-footer button:hover { opacity: .55; }
+.tutorial-footer button span { margin-left: 7px; }
 @media (max-width: 760px) { .classes-panel { flex-basis: 168px; padding-right: 18px; padding-left: 10px; } .calendar-viewport { margin-left: 0; } .todo-content { padding-left: 24px; padding-right: 12px; } .command-bar { padding-left: 24px; padding-right: 24px; } }
-@media (max-width: 560px) { .classes-panel { display: none; } .app-header { height: 55px; } .profile-wrap { right: 14px; } .todo-content { padding: 26px 20px; } .date-heading-row h1 { font-size: calc(21px * var(--scale)); } .command-bar { padding: 10px 20px 22px; } .calendar-viewport { padding: 25px 20px; } .calendar-day { min-height: 60px; } .calendar-day small { font-size: 10px; } .calendar-grid { row-gap: 10px; } }
+@media (max-width: 560px) { .classes-panel { display: none; } .app-header { height: 55px; } .profile-wrap { right: 14px; } .todo-content { padding: 26px 20px; } .date-heading-row h1 { font-size: calc(21px * var(--scale)); } .command-bar { padding: 10px 20px 22px; } .calendar-content { padding: 25px 20px; } .calendar-day { min-height: 60px; } .calendar-day small { font-size: 10px; } .calendar-grid { row-gap: 10px; } .tutorial-card { padding: 22px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
