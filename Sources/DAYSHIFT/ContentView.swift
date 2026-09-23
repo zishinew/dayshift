@@ -152,7 +152,10 @@ struct ContentView: View {
             }
 #endif
         }
-        .background(WindowAccessor(tutorialDimmed: !hasCompletedTutorial))
+        .background(WindowAccessor(
+            backgroundColor: appearance.backgroundColor,
+            titlebarDimOpacity: !hasCompletedTutorial ? 0.48 : (popout == nil ? 0 : 0.22)
+        ))
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
             GeometryReader { proxy in
                 if !hasCompletedTutorial,

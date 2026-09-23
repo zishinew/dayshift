@@ -5,10 +5,10 @@ import SwiftUI
 final class WindowManager {
     static let shared = WindowManager()
     private weak var window: NSWindow?
-    private weak var tutorialDimmer: NSView?
+    private weak var titlebarDimmer: NSView?
     private var configured = false
 
-    func attach(_ window: NSWindow) {
+    func attach(_ window: NSWindow, backgroundColor: NSColor) {
         self.window = window
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
@@ -17,7 +17,7 @@ final class WindowManager {
         window.toolbarStyle = .unifiedCompact
         window.toolbar?.showsBaselineSeparator = false
         window.isOpaque = true
-        window.backgroundColor = .white
+        window.backgroundColor = backgroundColor
 
         guard !configured else { return }
         configured = true
@@ -30,10 +30,11 @@ final class WindowManager {
         }
     }
 
-    func setTutorialDimmed(_ dimmed: Bool) {
+    func updateTitlebar(backgroundColor: NSColor, dimOpacity: CGFloat) {
+        window?.backgroundColor = backgroundColor
         guard let window, let frameView = window.contentView?.superview else { return }
-        guard dimmed else {
-            tutorialDimmer?.removeFromSuperview()
+        guard dimOpacity > 0 else {
+            titlebarDimmer?.removeFromSuperview()
             return
         }
 
@@ -44,17 +45,18 @@ final class WindowManager {
             width: frameView.bounds.width,
             height: titlebarHeight
         )
-        if let tutorialDimmer {
-            tutorialDimmer.frame = frame
+        if let titlebarDimmer {
+            titlebarDimmer.frame = frame
+            titlebarDimmer.layer?.backgroundColor = NSColor.black.withAlphaComponent(dimOpacity).cgColor
             return
         }
 
         let dimmer = TitlebarDimmerView(frame: frame)
         dimmer.autoresizingMask = [.width, .minYMargin]
         dimmer.wantsLayer = true
-        dimmer.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.48).cgColor
+        dimmer.layer?.backgroundColor = NSColor.black.withAlphaComponent(dimOpacity).cgColor
         frameView.addSubview(dimmer, positioned: .above, relativeTo: nil)
-        tutorialDimmer = dimmer
+        titlebarDimmer = dimmer
     }
 
     private final class TitlebarDimmerView: NSView {
@@ -64,28 +66,32 @@ final class WindowManager {
 }
 
 struct WindowAccessor: NSViewRepresentable {
-    var tutorialDimmed = false
+    var backgroundColor: Color
+    var titlebarDimOpacity: CGFloat = 0
 
     func makeNSView(context: Context) -> NSView {
         let view = AccessView()
-        view.tutorialDimmed = tutorialDimmed
+        view.backgroundColor = NSColor(backgroundColor)
+        view.titlebarDimOpacity = titlebarDimOpacity
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
         guard let view = nsView as? AccessView else { return }
-        view.tutorialDimmed = tutorialDimmed
-        WindowManager.shared.setTutorialDimmed(tutorialDimmed)
+        view.backgroundColor = NSColor(backgroundColor)
+        view.titlebarDimOpacity = titlebarDimOpacity
+        WindowManager.shared.updateTitlebar(backgroundColor: view.backgroundColor, dimOpacity: titlebarDimOpacity)
     }
 
     private final class AccessView: NSView {
-        var tutorialDimmed = false
+        var backgroundColor: NSColor = .white
+        var titlebarDimOpacity: CGFloat = 0
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             if let window {
-                WindowManager.shared.attach(window)
-                WindowManager.shared.setTutorialDimmed(tutorialDimmed)
+                WindowManager.shared.attach(window, backgroundColor: backgroundColor)
+                WindowManager.shared.updateTitlebar(backgroundColor: backgroundColor, dimOpacity: titlebarDimOpacity)
             }
         }
     }
