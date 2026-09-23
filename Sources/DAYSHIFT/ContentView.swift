@@ -44,7 +44,8 @@ private struct TutorialDimmer: View {
 
 @MainActor
 struct ContentView: View {
-    private enum Page { case todo, calendar, settings, account }
+    private enum Page { case todo, calendar }
+    private enum Popout: Equatable { case settings, account }
 
     @Environment(TaskStore.self) private var store
     @Environment(AppearanceSettings.self) private var appearance
@@ -53,6 +54,7 @@ struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("hasCompletedTutorial") private var hasCompletedTutorial = false
     @State private var page: Page = .todo
+    @State private var popout: Popout?
     @State private var tutorialStep = 0
     @State private var tutorialQuizID: UUID?
     @State private var tutorialTaskID: UUID?
@@ -91,14 +93,8 @@ struct ContentView: View {
                     if page == .todo {
                         todoPage
                             .transition(.opacity)
-                    } else if page == .calendar {
-                        calendarPage
-                            .transition(.opacity)
-                    } else if page == .settings {
-                        SettingsPage(onShowTutorial: startTutorial)
-                            .transition(.opacity)
                     } else {
-                        AccountPage(isCreatingAccount: $isCreatingAccount)
+                        calendarPage
                             .transition(.opacity)
                     }
                 }
@@ -106,10 +102,8 @@ struct ContentView: View {
                 .animation(motion, value: page)
                 .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.calendar: $0] }
 
-                if page == .todo || page == .calendar {
-                    classPanel
-                        .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.classes: $0] }
-                }
+                classPanel
+                    .anchorPreference(key: TutorialAnchorKey.self, value: .bounds) { [.classes: $0] }
             }
 
             commandBar
@@ -118,6 +112,12 @@ struct ContentView: View {
         .background(appearance.backgroundColor)
         .foregroundStyle(appearance.textColor)
         .preferredColorScheme(.light)
+        .overlay {
+            if let popout {
+                popoutOverlay(popout)
+                    .transition(.opacity)
+            }
+        }
         .toolbar {
 #if compiler(>=6.0)
             if #available(macOS 26.0, *) {
@@ -377,6 +377,7 @@ struct ContentView: View {
     }
 
     private func startTutorial() {
+        popout = nil
         store.discardTasks(withIDs: Set([tutorialQuizID, tutorialTaskID].compactMap { $0 }))
         tutorialStep = 0
         tutorialQuizID = nil
@@ -477,18 +478,16 @@ struct ContentView: View {
                 if account.userID == nil {
                     Button("log in") {
                         isCreatingAccount = false
-                        page = .account
-                        showProfileMenu = false
+                        showPopout(.account)
                     }
                     Button("sign up") {
                         isCreatingAccount = true
-                        page = .account
-                        showProfileMenu = false
+                        showPopout(.account)
                     }
                 } else {
-                    Button("account") { page = .account; showProfileMenu = false }
+                    Button("account") { showPopout(.account) }
                 }
-                Button("settings") { page = .settings; showProfileMenu = false }
+                Button("settings") { showPopout(.settings) }
                 if account.userID != nil {
                     Text(sync.status)
                         .font(.custom(serif, size: appearance.scaled(12)))
@@ -497,7 +496,7 @@ struct ContentView: View {
                         showProfileMenu = false
                         Task {
                             await account.signOut()
-                            page = .todo
+                            closePopout()
                         }
                     }
                 }
@@ -508,6 +507,69 @@ struct ContentView: View {
             .frame(width: 185, alignment: .leading)
             .padding(18)
             .background(appearance.backgroundColor)
+        }
+    }
+
+    private func showPopout(_ destination: Popout) {
+        showProfileMenu = false
+        commandBarIsFocused = false
+        openTaskDetail = nil
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.88)) {
+            popout = destination
+        }
+    }
+
+    private func closePopout() {
+        withAnimation(.easeOut(duration: 0.18)) { popout = nil }
+    }
+
+    private func popoutOverlay(_ destination: Popout) -> some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.22)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: closePopout)
+
+                Group {
+                    if destination == .settings {
+                        SettingsPage(onShowTutorial: {
+                            closePopout()
+                            startTutorial()
+                        })
+                    } else {
+                        AccountPage(isCreatingAccount: $isCreatingAccount)
+                    }
+                }
+                .frame(
+                    width: min(destination == .settings ? 520 : 440, geometry.size.width - 48),
+                    height: min(
+                        destination == .settings ? 550 : (account.userID == nil ? 365 : 280),
+                        geometry.size.height - 48
+                    )
+                )
+                .background(appearance.backgroundColor)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(appearance.textColor.opacity(0.12), lineWidth: 1)
+                }
+                .shadow(color: .black.opacity(0.13), radius: 28, y: 14)
+                .overlay(alignment: .topTrailing) {
+                    Button(action: closePopout) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(appearance.textColor.opacity(0.56))
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .help("close")
+                    .padding(18)
+                    .modifier(SubtleHover())
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .onExitCommand(perform: closePopout)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 

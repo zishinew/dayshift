@@ -13,7 +13,7 @@ struct SettingsPage: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("settings")
                     .font(.custom(appearance.fontName, size: appearance.scaled(24)))
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 20)
 
                 settingSection("appearance") {
                     ThemedColorPickerRow(title: "text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }), isExpanded: colorExpansion(for: "text"), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
@@ -67,12 +67,12 @@ struct SettingsPage: View {
                     .font(.custom(appearance.fontName, size: appearance.scaled(14)))
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
-                    .padding(.top, 34)
+                    .padding(.top, 14)
             }
             .frame(maxWidth: 560, alignment: .leading)
             .padding(.horizontal, 38)
-            .padding(.top, 30)
-            .padding(.bottom, 30)
+            .padding(.top, 28)
+            .padding(.bottom, 28)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .background(appearance.backgroundColor)
@@ -81,13 +81,13 @@ struct SettingsPage: View {
     }
 
     private func settingSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 15) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(title)
                 .font(.custom(appearance.fontName, size: appearance.scaled(15)))
                 .foregroundStyle(appearance.textColor.opacity(0.62))
             content()
         }
-        .padding(.bottom, 30)
+        .padding(.bottom, 16)
     }
 
     private func colorExpansion(for title: String) -> Binding<Bool> {
