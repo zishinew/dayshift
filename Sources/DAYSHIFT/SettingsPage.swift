@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 struct SettingsPage: View {
     @Environment(AppearanceSettings.self) private var appearance
+    @State private var expandedColor: String?
     let onShowTutorial: () -> Void
 
     var body: some View {
@@ -14,8 +15,8 @@ struct SettingsPage: View {
                     .padding(.bottom, 30)
 
                 settingSection("appearance") {
-                    ThemedColorPickerRow(title: "text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
-                    ThemedColorPickerRow(title: "background", color: Binding(get: { appearance.backgroundColor }, set: { appearance.backgroundColor = $0 }), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
+                    ThemedColorPickerRow(title: "text", color: Binding(get: { appearance.textColor }, set: { appearance.textColor = $0 }), isExpanded: colorExpansion(for: "text"), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
+                    ThemedColorPickerRow(title: "background", color: Binding(get: { appearance.backgroundColor }, set: { appearance.backgroundColor = $0 }), isExpanded: colorExpansion(for: "background"), fontName: appearance.fontName, fontSize: appearance.scaled(16), borderColor: appearance.textColor)
                     fontRow
                     sliderRow("text size", value: Binding(get: { appearance.textSize }, set: { appearance.textSize = $0 }), range: 14...25, valueLabel: "\(Int(appearance.textSize))")
                     sliderRow("row spacing", value: Binding(get: { appearance.rowSpacing }, set: { appearance.rowSpacing = $0 }), range: 4...18, valueLabel: "\(Int(appearance.rowSpacing))")
@@ -70,6 +71,13 @@ struct SettingsPage: View {
         .padding(.bottom, 30)
     }
 
+    private func colorExpansion(for title: String) -> Binding<Bool> {
+        Binding(
+            get: { expandedColor == title },
+            set: { expandedColor = $0 ? title : nil }
+        )
+    }
+
     private var fontRow: some View {
         HStack {
             Text("font")
@@ -110,10 +118,10 @@ struct SettingsPage: View {
 private struct ThemedColorPickerRow: View {
     let title: String
     @Binding var color: Color
+    @Binding var isExpanded: Bool
     let fontName: String
     let fontSize: CGFloat
     let borderColor: Color
-    @State private var isExpanded = false
     @State private var isHovered = false
 
     var body: some View {

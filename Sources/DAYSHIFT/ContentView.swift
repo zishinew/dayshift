@@ -4,6 +4,15 @@ private enum TutorialTarget: Hashable {
     case commandBar, taskTitle(UUID), classes, calendar
 }
 
+private enum TaskDetailEditor: Equatable {
+    case date, priority, repeatRule
+}
+
+private struct OpenTaskDetail: Equatable {
+    let taskID: UUID
+    let editor: TaskDetailEditor
+}
+
 private struct TutorialAnchorKey: PreferenceKey {
     static var defaultValue: [TutorialTarget: Anchor<CGRect>] = [:]
 
@@ -46,6 +55,7 @@ struct ContentView: View {
     @State private var tutorialQuizID: UUID?
     @State private var tutorialTaskID: UUID?
     @State private var tutorialTaskTitleFrame = CGRect.zero
+    @State private var openTaskDetail: OpenTaskDetail?
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -160,6 +170,7 @@ struct ContentView: View {
         .onAppear {
             if !hasCompletedTutorial { commandBarIsFocused = true }
         }
+        .onChange(of: page) { _, _ in openTaskDetail = nil }
     }
 
     private func tutorialOverlay(in size: CGSize, spotlight: CGRect) -> some View {
@@ -509,6 +520,7 @@ struct ContentView: View {
             task: task,
             serif: serif,
             showsDueDate: showsDueDate,
+            openDetail: $openTaskDetail,
             highlightsTitle: !hasCompletedTutorial && tutorialTaskID == task.id && (tutorialStep == 2 || tutorialStep == 3),
             onTitleFrameChange: { tutorialTaskTitleFrame = $0 },
             onToggle: { withAnimation(motion) { store.toggle(task) } },
@@ -520,6 +532,7 @@ struct ContentView: View {
                 }
             },
             onDelete: {
+                if openTaskDetail?.taskID == task.id { openTaskDetail = nil }
                 let deleted = store.delete(task)
                 if tutorialStep == 3, tutorialTaskID == task.id, deleted != nil {
                     moveTutorial(to: 4)
@@ -933,11 +946,10 @@ struct ContentView: View {
 
 @MainActor
 private struct TaskRow: View {
-    private enum DetailEditor: Equatable { case date, priority, repeatRule }
-
     let task: TaskItem
     let serif: String
     let showsDueDate: Bool
+    @Binding var openDetail: OpenTaskDetail?
     let highlightsTitle: Bool
     let onTitleFrameChange: (CGRect) -> Void
     let onToggle: () -> Void
@@ -952,8 +964,11 @@ private struct TaskRow: View {
 
     @State private var isEditingTitle = false
     @State private var titleDraft = ""
-    @State private var detailEditor: DetailEditor?
     @FocusState private var titleIsFocused: Bool
+
+    private var detailEditor: TaskDetailEditor? {
+        openDetail?.taskID == task.id ? openDetail?.editor : nil
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -1061,10 +1076,10 @@ private struct TaskRow: View {
             .accessibilityHidden(true)
     }
 
-    private func detailButton(_ title: String, editor: DetailEditor) -> some View {
+    private func detailButton(_ title: String, editor: TaskDetailEditor) -> some View {
         Button(title.lowercased()) {
             withAnimation(.easeInOut(duration: 0.15)) {
-                detailEditor = detailEditor == editor ? nil : editor
+                openDetail = detailEditor == editor ? nil : OpenTaskDetail(taskID: task.id, editor: editor)
             }
         }
         .buttonStyle(.plain)
@@ -1073,7 +1088,7 @@ private struct TaskRow: View {
     }
 
     @ViewBuilder
-    private func detailEditorView(_ editor: DetailEditor) -> some View {
+    private func detailEditorView(_ editor: TaskDetailEditor) -> some View {
         switch editor {
         case .date:
             DateAndTimeEditor(
@@ -1082,7 +1097,7 @@ private struct TaskRow: View {
                 onDateChange: onDateChange,
                 onTimeChange: onTimeChange,
                 onClearTime: onClearTime,
-                onDone: { detailEditor = nil }
+                onDone: { openDetail = nil }
             )
             .frame(width: 238)
             .modifier(DetailPanel())
@@ -1091,7 +1106,7 @@ private struct TaskRow: View {
                 ForEach(TaskPriority.allCases, id: \.self) { priority in
                     detailChoice(priority.rawValue.lowercased(), selected: task.priority == priority) {
                         onPriorityChange(priority)
-                        detailEditor = nil
+                        openDetail = nil
                     }
                 }
             }
@@ -1102,7 +1117,7 @@ private struct TaskRow: View {
                 ForEach(Array(repeatChoices.enumerated()), id: \.offset) { _, choice in
                     detailChoice(choice.label, selected: repeatChoiceIsSelected(choice.rule)) {
                         onRepeatChange(choice.rule)
-                        detailEditor = nil
+                        openDetail = nil
                     }
                 }
             }
