@@ -1019,6 +1019,12 @@ private struct TaskRow: View {
 
                 if let detailEditor {
                     detailEditorView(detailEditor)
+                        .background {
+                            OutsideClickHandler {
+                                guard openDetail == OpenTaskDetail(taskID: task.id, editor: detailEditor) else { return }
+                                withAnimation(.easeInOut(duration: 0.15)) { openDetail = nil }
+                            }
+                        }
                         .padding(.top, 7)
                         .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading)))
                         .zIndex(2)

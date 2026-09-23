@@ -151,6 +151,12 @@ private struct ThemedColorPickerRow: View {
 
             if isExpanded {
                 ColorWheelPicker(color: $color, borderColor: borderColor, fontName: fontName)
+                    .background {
+                        OutsideClickHandler {
+                            guard isExpanded else { return }
+                            withAnimation(.easeInOut(duration: 0.16)) { isExpanded = false }
+                        }
+                    }
                     .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topTrailing)))
             }
         }

@@ -141,6 +141,68 @@ struct RightClickHandler: NSViewRepresentable {
     }
 }
 
+struct OutsideClickHandler: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = EventView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? EventView)?.action = action
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: ()) {
+        (nsView as? EventView)?.removeObservers()
+    }
+
+    private final class EventView: NSView {
+        var action: (() -> Void)?
+        private var mouseMonitor: Any?
+        private var resignObserver: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            removeObservers()
+            guard let window else { return }
+
+            mouseMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+                guard let self, event.window === self.window else { return event }
+                let point = self.convert(event.locationInWindow, from: nil)
+                if !self.bounds.contains(point) {
+                    // Let the clicked control handle its event before closing
+                    // the old editor. Opening a new one should win.
+                    DispatchQueue.main.async { [weak self] in self?.action?() }
+                }
+                return event
+            }
+
+            resignObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResignKeyNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                self?.action?()
+            }
+        }
+
+        func removeObservers() {
+            if let mouseMonitor {
+                NSEvent.removeMonitor(mouseMonitor)
+                self.mouseMonitor = nil
+            }
+            if let resignObserver {
+                NotificationCenter.default.removeObserver(resignObserver)
+                self.resignObserver = nil
+            }
+        }
+
+        deinit { removeObservers() }
+    }
+}
+
 struct ScrollWheelPager: NSViewRepresentable {
     enum GestureEvent {
         case began
