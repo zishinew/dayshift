@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { interpret } from './commands';
-import { fromSwiftDate, toSwiftDate } from './model';
+import { fromSwiftDate, matchingTask, toSwiftDate } from './model';
 
 const now = new Date(2026, 8, 23, 9, 0, 0);
 
@@ -53,5 +53,15 @@ describe('natural-language commands', () => {
       kind: 'repeat', query: 'math237 quiz', rule: { interval: 2, unit: 'week', weekday: 3 },
     });
     expect(interpret('remove the quiz', now)).toEqual({ kind: 'delete', query: 'quiz' });
+  });
+
+  it('finds an item even when a delete command mentions its date', () => {
+    const added = interpret('quiz next tuesday', now);
+    expect(added.kind).toBe('add');
+    if (added.kind === 'add') {
+      const command = interpret('remove the quiz on next tuesday', now);
+      expect(command.kind).toBe('delete');
+      if (command.kind === 'delete') expect(matchingTask([added.task], command.query)?.id).toBe(added.task.id);
+    }
   });
 });

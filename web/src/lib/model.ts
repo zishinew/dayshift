@@ -70,8 +70,10 @@ export type SortMode = 'date' | 'priority' | 'alphabetical' | 'added';
 
 export function matchingTask(tasks: Task[], query: string): Task | undefined {
   const value = query.toLowerCase().replace(/^(the|my)\s+/, '').trim();
+  const withoutDate = value.replace(/\s+(?:on|by|for|due)\s+(?:(?:next|this)\s+)?(?:sun(?:day)?|mon(?:day)?|tue(?:sday|s)?|wed(?:nesday|s)?|thu(?:rsday|rs)?|fri(?:day)?|sat(?:urday)?|tomorrow|today|next week|\d{1,2}\/\d{1,2}).*$/i, '').trim();
   const live = tasks.filter(task => !task.isComplete);
   return live.find(task => task.title.toLowerCase() === value)
     ?? live.find(task => task.title.toLowerCase().includes(value))
+    ?? (withoutDate !== value ? live.find(task => task.title.toLowerCase() === withoutDate || task.title.toLowerCase().includes(withoutDate)) : undefined)
     ?? tasks.find(task => task.title.toLowerCase().includes(value));
 }
