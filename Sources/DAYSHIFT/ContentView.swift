@@ -59,6 +59,7 @@ struct ContentView: View {
     @State private var tutorialTaskTitleFrame = CGRect.zero
     @State private var openTaskDetail: OpenTaskDetail?
     @State private var showProfileMenu = false
+    @State private var isCreatingAccount = false
     @State private var input = ""
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
     @State private var displayedMonth = Calendar.current.dateInterval(of: .month, for: Date())?.start ?? Date()
@@ -97,7 +98,7 @@ struct ContentView: View {
                         SettingsPage(onShowTutorial: startTutorial)
                             .transition(.opacity)
                     } else {
-                        AccountPage()
+                        AccountPage(isCreatingAccount: $isCreatingAccount)
                             .transition(.opacity)
                     }
                 }
@@ -134,9 +135,22 @@ struct ContentView: View {
                 topToggle
             }
 #endif
+#if compiler(>=6.0)
+            if #available(macOS 26.0, *) {
+                ToolbarItem(placement: .primaryAction) {
+                    profileButton
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .primaryAction) {
+                    profileButton
+                }
+            }
+#else
             ToolbarItem(placement: .primaryAction) {
                 profileButton
             }
+#endif
         }
         .background(WindowAccessor(tutorialDimmed: !hasCompletedTutorial))
         .overlayPreferenceValue(TutorialAnchorKey.self) { anchors in
@@ -448,10 +462,9 @@ struct ContentView: View {
     private var profileButton: some View {
         Button { showProfileMenu.toggle() } label: {
             Image(systemName: "person.crop.circle")
-                .font(.system(size: 17, weight: .regular))
+                .font(.system(size: 21, weight: .regular))
                 .foregroundStyle(appearance.textColor)
-                .opacity(showProfileMenu ? 1 : 0.7)
-                .frame(width: 28, height: 28)
+                .frame(width: 30, height: 30)
         }
         .buttonStyle(.plain)
         .help(account.email ?? "account")
@@ -461,7 +474,20 @@ struct ContentView: View {
                     .font(.custom(serif, size: appearance.scaled(12)))
                     .foregroundStyle(appearance.textColor.opacity(0.55))
                     .lineLimit(1)
-                Button("account") { page = .account; showProfileMenu = false }
+                if account.userID == nil {
+                    Button("log in") {
+                        isCreatingAccount = false
+                        page = .account
+                        showProfileMenu = false
+                    }
+                    Button("sign up") {
+                        isCreatingAccount = true
+                        page = .account
+                        showProfileMenu = false
+                    }
+                } else {
+                    Button("account") { page = .account; showProfileMenu = false }
+                }
                 Button("settings") { page = .settings; showProfileMenu = false }
                 if account.userID != nil {
                     Text(sync.status)

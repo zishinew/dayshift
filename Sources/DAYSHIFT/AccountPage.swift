@@ -2,11 +2,11 @@ import SwiftUI
 
 @MainActor
 struct AccountPage: View {
+    @Binding var isCreatingAccount: Bool
     @Environment(AppearanceSettings.self) private var appearance
     @Environment(CloudAccount.self) private var account
     @Environment(CloudSync.self) private var sync
     @Environment(TaskStore.self) private var store
-    @State private var isCreatingAccount = false
     @State private var email = ""
     @State private var password = ""
 
