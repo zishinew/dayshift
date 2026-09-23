@@ -73,6 +73,28 @@ final class TaskStoreHistoryTests: XCTestCase {
     }
 
     @MainActor
+    func testCheckboxCompletionKeepsRepeatingTaskScheduled() {
+        let store = makeStore()
+        let due = ISO8601DateFormatter().date(from: "2026-09-24T16:00:00Z")!
+        store.add(ParsedTask(
+            title: "Study",
+            dueDate: due,
+            priority: .medium,
+            classCode: nil,
+            repeatRule: RepeatRule(interval: 1, unit: .day)
+        ))
+        let original = store.tasks.first!
+
+        store.toggle(original)
+
+        XCTAssertEqual(store.tasks.count, 2)
+        XCTAssertTrue(store.tasks.first { $0.id == original.id }!.isComplete)
+        let next = store.tasks.first { $0.id != original.id }!
+        XCTAssertFalse(next.isComplete)
+        XCTAssertEqual(Calendar.current.dateComponents([.day], from: due, to: next.dueDate).day, 1)
+    }
+
+    @MainActor
     func testEveryTaskDetailCanBeEditedAndUndone() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

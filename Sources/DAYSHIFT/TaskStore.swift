@@ -124,15 +124,16 @@ final class TaskStore {
     func toggle(_ task: TaskItem) {
         guard !task.isEvent else { return }
         guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return }
-        recordMutation()
-        tasks[index].isComplete.toggle()
-        updateCompletionDeletion(for: tasks[index])
-        save()
+        _ = setCompletion(at: index, to: !tasks[index].isComplete)
     }
 
     @discardableResult
     func setCompletion(matching query: String, to value: Bool) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return setCompletion(at: index, to: value)
+    }
+
+    private func setCompletion(at index: Int, to value: Bool) -> String? {
         guard !tasks[index].isEvent else { return nil }
         let wasComplete = tasks[index].isComplete
         guard wasComplete != value else { return tasks[index].title }

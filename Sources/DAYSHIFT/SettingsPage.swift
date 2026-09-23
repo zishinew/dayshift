@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 struct SettingsPage: View {
     @Environment(AppearanceSettings.self) private var appearance
+    @Environment(ReminderManager.self) private var reminders
     @State private var expandedColor: String?
     let onShowTutorial: () -> Void
 
@@ -34,6 +35,24 @@ struct SettingsPage: View {
                             .font(.custom(appearance.fontName, size: appearance.scaled(15)))
                     }
                     .toggleStyle(.checkbox)
+                }
+
+                settingSection("notifications") {
+                    Toggle(isOn: Binding(get: { reminders.isEnabled }, set: { reminders.isEnabled = $0 })) {
+                        Text("upcoming alerts")
+                            .font(.custom(appearance.fontName, size: appearance.scaled(15)))
+                    }
+                    .toggleStyle(.checkbox)
+
+                    Text("1 hour before timed items · morning before untimed items")
+                        .font(.custom(appearance.fontName, size: appearance.scaled(12)))
+                        .foregroundStyle(.secondary)
+
+                    if let statusMessage = reminders.statusMessage {
+                        Text(statusMessage)
+                            .font(.custom(appearance.fontName, size: appearance.scaled(12)))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 settingSection("help") {

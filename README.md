@@ -44,6 +44,10 @@ Press `tab` when a school task has a suggested class. Completing a repeating tas
 
 Use `command-z` to undo the last task or class change and `command-shift-z` to redo it. Completed tasks fade away after two seconds; undo still restores the task.
 
+## notifications
+
+Upcoming alerts are on by default and can be turned off in settings. The app asks for macOS notification permission when it has an upcoming item to remind you about. Timed tasks and events alert one hour beforehand (or at the scheduled time if added within that hour). Items without a time alert at 9 a.m. the day before, or at 9 a.m. on the due date if added later. Completing or removing an item cancels its pending alert; repeating items schedule their upcoming occurrences.
+
 ## data
 
 Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No account or network connection is required.
@@ -58,4 +62,3 @@ Tasks and classes are stored locally in Application Support under `DAYSHIFT`. No
 Pull requests should keep the app dependency-free and preserve the `swift test --jobs 1` check. GitHub Actions runs that test and builds the app on every push and pull request to `main`.
 
 Run `./scripts/ci-check.sh` before pushing. It performs a clean Swift 5 compatibility test, builds the signed app bundle, and verifies its signature. This checkout uses the same check automatically as a pre-push hook.
-# dayshift
