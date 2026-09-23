@@ -1,6 +1,6 @@
 # dayshift
 
-minimal, natural-language task management for macOS.
+minimal, natural-language task management for macOS and the web.
 
 dayshift is a native SwiftUI app with a full-screen todo list, a calendar view, class-aware school task suggestions, priorities, due dates, and repeating tasks. Tasks are controlled from the command bar at the bottom of the window. Account and appearance controls live under the profile icon in the title bar.
 
@@ -66,3 +66,16 @@ The migrations are already applied to the Dayshift Supabase project bundled in t
 Pull requests should keep the app dependency-free and preserve the `swift test --jobs 1` check. GitHub Actions runs that test and builds the app on every push and pull request to `main`.
 
 Run `./scripts/ci-check.sh` before pushing. It performs a clean Swift 5 compatibility test, builds the signed app bundle, and verifies its signature. This checkout uses the same check automatically as a pre-push hook.
+
+## web app
+
+The Next.js 16 / React 19 / Tailwind CSS v4 app lives in [`web/`](web/). It uses the same Supabase Auth account and `dayshift_changes` sync log as the Mac app, including Swift-compatible date encoding. No separate database or account is needed. Browser guest data stays local until sign-in, then is copied into the account once; the guest copy remains.
+
+```sh
+cd web
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+Open `http://localhost:3000`. The included `.env.example` contains only the public Supabase URL and publishable key; never use a service-role key in `NEXT_PUBLIC_` variables. For production, set those same variables in your hosting provider and deploy the `web/` directory as a Next.js app. The website has not been deployed by this repository alone. The `web` GitHub Actions job typechecks, tests, and builds it on changes.

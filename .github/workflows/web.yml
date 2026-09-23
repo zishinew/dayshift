@@ -1,0 +1,39 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: install pinned dependencies
+        run: npm ci
+        working-directory: web
+      - name: production build
+        run: npm run build
+        working-directory: web
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://vyijsxdnzrsndwskpvax.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_AmScHLb9VM0k78clL-IFBQ_KHowgFYY
+      - name: typecheck
+        run: npm run lint
+        working-directory: web
+      - name: test
+        run: npm test
+        working-directory: web
