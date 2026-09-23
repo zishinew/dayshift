@@ -93,7 +93,8 @@ final class TaskStoreHistoryTests: XCTestCase {
         XCTAssertEqual(calendar.component(.minute, from: store.tasks.first!.dueDate), 30)
         XCTAssertTrue(store.classes.contains { $0.code == "MATH237" })
 
-        XCTAssertEqual(store.clearTime(matching: "math237 quiz", calendar: calendar), "Math237 quiz")
+        let editedTask = store.tasks.first!
+        XCTAssertEqual(store.clearTime(editedTask, calendar: calendar), "Math237 quiz")
         XCTAssertEqual(store.clearClass(matching: "math237 quiz"), "Math237 quiz")
         XCTAssertEqual(calendar.component(.hour, from: store.tasks.first!.dueDate), 0)
         XCTAssertNil(store.tasks.first?.classCode)

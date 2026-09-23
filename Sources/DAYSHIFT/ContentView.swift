@@ -526,6 +526,8 @@ struct ContentView: View {
                 }
             },
             onDateChange: { _ = store.setDate(task, to: $0) },
+            onTimeChange: { hour, minute in _ = store.setTime(task, hour: hour, minute: minute) },
+            onClearTime: { _ = store.clearTime(task) },
             onPriorityChange: { _ = store.setPriority(task, to: $0) },
             onRepeatChange: { _ = store.setRepeat(task, to: $0) }
         )
@@ -942,6 +944,8 @@ private struct TaskRow: View {
     let onRename: (String) -> Void
     let onDelete: () -> Void
     let onDateChange: (Date) -> Void
+    let onTimeChange: (Int, Int) -> Void
+    let onClearTime: () -> Void
     let onPriorityChange: (TaskPriority) -> Void
     let onRepeatChange: (RepeatRule?) -> Void
     @Environment(AppearanceSettings.self) private var appearance
@@ -1034,7 +1038,7 @@ private struct TaskRow: View {
 
             if hasTime {
                 detailSeparator
-                Text(task.dueDate.formatted(date: .omitted, time: .shortened).lowercased())
+                detailButton(task.dueDate.formatted(date: .omitted, time: .shortened), editor: .date)
             }
 
             detailSeparator
@@ -1072,10 +1076,14 @@ private struct TaskRow: View {
     private func detailEditorView(_ editor: DetailEditor) -> some View {
         switch editor {
         case .date:
-            CompactCalendar(selectedDate: task.dueDate, serif: serif) { date in
-                onDateChange(date)
-                detailEditor = nil
-            }
+            DateAndTimeEditor(
+                selectedDate: task.dueDate,
+                serif: serif,
+                onDateChange: onDateChange,
+                onTimeChange: onTimeChange,
+                onClearTime: onClearTime,
+                onDone: { detailEditor = nil }
+            )
             .frame(width: 238)
             .modifier(DetailPanel())
         case .priority:
@@ -1205,6 +1213,105 @@ struct SubtleHover: ViewModifier {
             .onHover { hovering in
                 isHovered = hovering
             }
+    }
+}
+
+@MainActor
+private struct DateAndTimeEditor: View {
+    @Environment(AppearanceSettings.self) private var appearance
+    let selectedDate: Date
+    let serif: String
+    let onDateChange: (Date) -> Void
+    let onTimeChange: (Int, Int) -> Void
+    let onClearTime: () -> Void
+    let onDone: () -> Void
+    @State private var timeDraft: String
+
+    init(
+        selectedDate: Date,
+        serif: String,
+        onDateChange: @escaping (Date) -> Void,
+        onTimeChange: @escaping (Int, Int) -> Void,
+        onClearTime: @escaping () -> Void,
+        onDone: @escaping () -> Void
+    ) {
+        self.selectedDate = selectedDate
+        self.serif = serif
+        self.onDateChange = onDateChange
+        self.onTimeChange = onTimeChange
+        self.onClearTime = onClearTime
+        self.onDone = onDone
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: selectedDate)
+        let hasTime = parts.hour != 0 || parts.minute != 0
+        _timeDraft = State(initialValue: hasTime ? selectedDate.formatted(date: .omitted, time: .shortened).lowercased() : "")
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            CompactCalendar(selectedDate: selectedDate, serif: serif, onSelect: onDateChange)
+
+            HStack(spacing: 9) {
+                Text("time")
+                    .foregroundStyle(.secondary)
+
+                TextField("4:30 pm", text: $timeDraft)
+                    .textFieldStyle(.plain)
+                    .font(.custom(serif, size: appearance.scaled(13)))
+                    .frame(width: 70)
+                    .padding(.vertical, 3)
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(appearance.textColor.opacity(0.18))
+                            .frame(height: 1)
+                    }
+                    .onSubmit(applyTime)
+
+                Button("set", action: applyTime)
+                    .disabled(parsedTime == nil)
+                    .opacity(parsedTime == nil ? 0.35 : 1)
+                    .modifier(SubtleHover())
+
+                if hasTime {
+                    Button("clear") {
+                        timeDraft = ""
+                        onClearTime()
+                    }
+                    .modifier(SubtleHover())
+                }
+            }
+            .buttonStyle(.plain)
+            .font(.custom(serif, size: appearance.scaled(12)))
+
+            HStack {
+                Spacer()
+                Button("done", action: onDone)
+                    .buttonStyle(.plain)
+                    .font(.custom(serif, size: appearance.scaled(12)))
+                    .foregroundStyle(.secondary)
+                    .modifier(SubtleHover())
+            }
+        }
+    }
+
+    private var parsedTime: (hour: Int, minute: Int)? {
+        NaturalLanguageParser().timeComponents(in: "at " + timeDraft)
+    }
+
+    private var hasTime: Bool {
+        let parts = Calendar.current.dateComponents([.hour, .minute], from: selectedDate)
+        return parts.hour != 0 || parts.minute != 0
+    }
+
+    private func applyTime() {
+        guard let parsedTime else { return }
+        onTimeChange(parsedTime.hour, parsedTime.minute)
+        let date = Calendar.current.date(
+            bySettingHour: parsedTime.hour,
+            minute: parsedTime.minute,
+            second: 0,
+            of: selectedDate
+        ) ?? selectedDate
+        timeDraft = date.formatted(date: .omitted, time: .shortened).lowercased()
     }
 }
 

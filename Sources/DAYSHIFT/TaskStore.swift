@@ -256,8 +256,18 @@ final class TaskStore {
 
     @discardableResult
     func setTime(matching query: String, hour: Int, minute: Int, calendar: Calendar = .current) -> String? {
-        guard let index = matchingIndex(for: query),
-              let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: tasks[index].dueDate) else { return nil }
+        guard let index = matchingIndex(for: query) else { return nil }
+        return setTime(at: index, hour: hour, minute: minute, calendar: calendar)
+    }
+
+    @discardableResult
+    func setTime(_ task: TaskItem, hour: Int, minute: Int, calendar: Calendar = .current) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return setTime(at: index, hour: hour, minute: minute, calendar: calendar)
+    }
+
+    private func setTime(at index: Int, hour: Int, minute: Int, calendar: Calendar) -> String? {
+        guard let date = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: tasks[index].dueDate) else { return nil }
         guard tasks[index].dueDate != date else { return tasks[index].title }
         recordMutation()
         tasks[index].dueDate = date
@@ -269,6 +279,16 @@ final class TaskStore {
     @discardableResult
     func clearTime(matching query: String, calendar: Calendar = .current) -> String? {
         guard let index = matchingIndex(for: query) else { return nil }
+        return clearTime(at: index, calendar: calendar)
+    }
+
+    @discardableResult
+    func clearTime(_ task: TaskItem, calendar: Calendar = .current) -> String? {
+        guard let index = tasks.firstIndex(where: { $0.id == task.id }) else { return nil }
+        return clearTime(at: index, calendar: calendar)
+    }
+
+    private func clearTime(at index: Int, calendar: Calendar) -> String? {
         let date = calendar.startOfDay(for: tasks[index].dueDate)
         guard tasks[index].dueDate != date else { return tasks[index].title }
         recordMutation()
