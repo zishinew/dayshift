@@ -655,6 +655,14 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .modifier(SubtleHover())
                     .accessibilityLabel("sort tasks")
+                    .background(alignment: .topTrailing) {
+                        if isSortMenuOpen {
+                            OutsideClickHandler {
+                                withAnimation(motion) { isSortMenuOpen = false }
+                            }
+                            .frame(width: 146, height: 160)
+                        }
+                    }
                     .overlay(alignment: .topTrailing) {
                         if isSortMenuOpen {
                             VStack(alignment: .leading, spacing: 0) {
@@ -681,11 +689,6 @@ struct ContentView: View {
                             }
                             .frame(width: 132, alignment: .leading)
                             .modifier(DetailPanel())
-                            .background {
-                                OutsideClickHandler {
-                                    withAnimation(motion) { isSortMenuOpen = false }
-                                }
-                            }
                             .offset(y: 27)
                             .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topTrailing)))
                             .zIndex(20)
@@ -1257,20 +1260,7 @@ private struct TaskRow: View {
                         .transition(.opacity)
                 }
 
-                detailLine
-
-                if let detailEditor {
-                    detailEditorView(detailEditor)
-                        .background {
-                            OutsideClickHandler {
-                                guard openDetail == OpenTaskDetail(taskID: task.id, editor: detailEditor) else { return }
-                                withAnimation(.easeInOut(duration: 0.15)) { openDetail = nil }
-                            }
-                        }
-                        .padding(.top, 7)
-                        .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading)))
-                        .zIndex(2)
-                }
+                detailControls
             }
             .background {
                 RightClickHandler(action: onDelete)
@@ -1317,6 +1307,28 @@ private struct TaskRow: View {
         }
         .font(.custom(serif, size: appearance.scaled(13)))
         .foregroundStyle(.tertiary)
+    }
+
+    private var detailControls: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            detailLine
+            if let detailEditor {
+                detailEditorView(detailEditor)
+                    .padding(.top, 7)
+                    .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topLeading)))
+                    .zIndex(2)
+            }
+        }
+        .background {
+            if let detailEditor {
+                OutsideClickHandler {
+                    guard openDetail == OpenTaskDetail(taskID: task.id, editor: detailEditor) else { return }
+                    withAnimation(.easeInOut(duration: 0.15)) { openDetail = nil }
+                }
+            }
+        }
+        .zIndex(detailEditor == nil ? 0 : 1)
+        .animation(.easeInOut(duration: 0.15), value: detailEditor)
     }
 
     private var detailSeparator: some View {

@@ -397,7 +397,7 @@ function TaskSections({ tasks, showDate, row }: { tasks: Task[]; showDate: boole
 }
 
 function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDelete, onRename, onDate, onTime, onPriority, onRepeat }: {
-  task: Task; fading: boolean; showDate: boolean; popover: Popover; setPopover: (value: Popover) => void;
+  task: Task; fading: boolean; showDate: boolean; popover: Popover; setPopover: React.Dispatch<React.SetStateAction<Popover>>;
   onToggle: () => void; onDelete: () => void; onRename: (title: string) => void;
   onDate: (date: Date) => void; onTime: (time: string) => void; onPriority: (priority: Priority) => void;
   onRepeat: (rule: RepeatRule | null) => void;
@@ -408,7 +408,8 @@ function TaskRow({ task, fading, showDate, popover, setPopover, onToggle, onDele
   const [editingTime, setEditingTime] = useState(false);
   const date = dateOf(task);
   const open = (kind: NonNullable<Popover>['kind']) => (event: React.MouseEvent) => {
-    event.stopPropagation(); setPopover(popover?.id === task.id && popover.kind === kind ? null : { id: task.id, kind });
+    event.stopPropagation();
+    setPopover(current => current?.id === task.id && current.kind === kind ? null : { id: task.id, kind });
   };
   const saveTitle = () => { if (title.trim() && title.trim() !== task.title) onRename(title.trim()); else setTitle(task.title); setEditing(false); };
   return <motion.div layout="position" data-task-row-id={task.id} className="task-row" initial={reducedMotion ? false : { opacity: 0, y: 6 }} animate={{ opacity: fading ? 0 : 1, y: 0 }} exit={{ opacity: 0 }} transition={{ opacity: { duration: reducedMotion ? 0 : fading ? 0.38 : 0.23 }, y: { duration: reducedMotion ? 0 : 0.28, ease: [0.22, 1, 0.36, 1] }, layout: { type: 'spring', stiffness: 340, damping: 36 } }} onContextMenu={event => { event.preventDefault(); onDelete(); }}>
