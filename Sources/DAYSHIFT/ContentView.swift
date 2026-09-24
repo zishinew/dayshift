@@ -13,6 +13,13 @@ private struct OpenTaskDetail: Equatable {
     let editor: TaskDetailEditor
 }
 
+private enum TaskSort: String, CaseIterable, Identifiable {
+    case date, priority, alphabetical, added
+
+    var id: String { rawValue }
+    var title: String { rawValue }
+}
+
 private struct TutorialAnchorKey: PreferenceKey {
     static var defaultValue: [TutorialTarget: Anchor<CGRect>] = [:]
 
@@ -53,6 +60,7 @@ struct ContentView: View {
     @Environment(CloudSync.self) private var sync
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("hasCompletedTutorial") private var hasCompletedTutorial = false
+    @AppStorage("nativeTaskSort") private var taskSortRawValue = TaskSort.date.rawValue
     @State private var page: Page = .todo
     @State private var popout: Popout?
     @State private var tutorialStep = 0
@@ -81,10 +89,47 @@ struct ContentView: View {
     }
 
     private var today: Date { Calendar.current.startOfDay(for: Date()) }
-    private var todayTasks: [TaskItem] { store.tasks(on: today) }
-    private var futureTasks: [TaskItem] { store.tasks(after: today) }
+    private var taskSort: TaskSort { TaskSort(rawValue: taskSortRawValue) ?? .date }
+    private var todayTasks: [TaskItem] {
+        sortedTasks(store.tasks.filter { Calendar.current.isDate($0.dueDate, inSameDayAs: today) })
+    }
+    private var futureTasks: [TaskItem] {
+        let nextDay = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+        return sortedTasks(store.tasks.filter { $0.dueDate >= nextDay })
+    }
     private var agendaTasks: [TaskItem] { todayTasks + futureTasks }
     private var classSuggestion: ClassItem? { store.suggestedClass(for: input) }
+
+    private func sortedTasks(_ tasks: [TaskItem]) -> [TaskItem] {
+        switch taskSort {
+        case .date:
+            tasks.sorted { lhs, rhs in
+                if lhs.dueDate != rhs.dueDate { return lhs.dueDate < rhs.dueDate }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            }
+        case .priority:
+            tasks.sorted { lhs, rhs in
+                if lhs.priority != rhs.priority { return priorityRank(lhs.priority) < priorityRank(rhs.priority) }
+                if lhs.dueDate != rhs.dueDate { return lhs.dueDate < rhs.dueDate }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            }
+        case .alphabetical:
+            tasks.sorted { lhs, rhs in
+                let result = lhs.title.localizedStandardCompare(rhs.title)
+                return result == .orderedSame ? lhs.dueDate < rhs.dueDate : result == .orderedAscending
+            }
+        case .added:
+            tasks
+        }
+    }
+
+    private func priorityRank(_ priority: TaskPriority) -> Int {
+        switch priority {
+        case .high: 0
+        case .medium: 1
+        case .low: 2
+        }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -590,9 +635,38 @@ struct ContentView: View {
     private var todoPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
-                    .font(.custom(serif, size: appearance.scaled(24)))
-                    .padding(.bottom, 22)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
+                        .font(.custom(serif, size: appearance.scaled(24)))
+                    Spacer(minLength: 16)
+                    Menu {
+                        ForEach(TaskSort.allCases) { option in
+                            Button {
+                                withAnimation(motion) { taskSortRawValue = option.rawValue }
+                            } label: {
+                                HStack {
+                                    Text(option.title)
+                                    if taskSort == option { Image(systemName: "checkmark") }
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 5) {
+                            Text("sort")
+                            Text("·")
+                            Text(taskSort.title)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 8, weight: .medium))
+                        }
+                        .font(.custom(serif, size: appearance.scaled(12)))
+                        .foregroundStyle(appearance.textColor.opacity(0.52))
+                        .contentShape(Rectangle())
+                    }
+                    .menuStyle(.borderlessButton)
+                    .modifier(SubtleHover())
+                    .accessibilityLabel("sort tasks")
+                }
+                .padding(.bottom, 22)
 
                 if todayTasks.isEmpty {
                     Text("no tasks today")
@@ -651,6 +725,7 @@ struct ContentView: View {
             .padding(.bottom, 24)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .animation(motion, value: agendaTasks)
+            .animation(motion, value: taskSortRawValue)
         }
     }
 
