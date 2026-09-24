@@ -77,6 +77,7 @@ struct ContentView: View {
     @State private var calendarDragOffset: CGFloat = 0
     @State private var calendarSettlingDirection = 0
     @State private var calendarViewportHeight: CGFloat = 700
+    @State private var isSortMenuOpen = false
     @State private var feedback: String?
     @FocusState private var commandBarIsFocused: Bool
 
@@ -639,32 +640,58 @@ struct ContentView: View {
                     Text(today.formatted(.dateTime.weekday(.wide).month(.wide).day()).lowercased())
                         .font(.custom(serif, size: appearance.scaled(24)))
                     Spacer(minLength: 16)
-                    Menu {
-                        ForEach(TaskSort.allCases) { option in
-                            Button {
-                                withAnimation(motion) { taskSortRawValue = option.rawValue }
-                            } label: {
-                                HStack {
-                                    Text(option.title)
-                                    if taskSort == option { Image(systemName: "checkmark") }
-                                }
-                            }
-                        }
+                    Button {
+                        withAnimation(motion) { isSortMenuOpen.toggle() }
                     } label: {
                         HStack(spacing: 5) {
                             Text("sort")
                             Text("·")
                             Text(taskSort.title)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 8, weight: .medium))
                         }
                         .font(.custom(serif, size: appearance.scaled(12)))
                         .foregroundStyle(appearance.textColor.opacity(0.52))
                         .contentShape(Rectangle())
                     }
-                    .menuStyle(.borderlessButton)
+                    .buttonStyle(.plain)
                     .modifier(SubtleHover())
                     .accessibilityLabel("sort tasks")
+                    .overlay(alignment: .topTrailing) {
+                        if isSortMenuOpen {
+                            VStack(alignment: .leading, spacing: 0) {
+                                ForEach(TaskSort.allCases) { option in
+                                    Button {
+                                        withAnimation(motion) {
+                                            taskSortRawValue = option.rawValue
+                                            isSortMenuOpen = false
+                                        }
+                                    } label: {
+                                        HStack(spacing: 9) {
+                                            Text(option.title)
+                                            Spacer(minLength: 8)
+                                            if taskSort == option { Text("·") }
+                                        }
+                                        .font(.custom(serif, size: appearance.scaled(13)))
+                                        .foregroundStyle(appearance.textColor)
+                                        .contentShape(Rectangle())
+                                        .padding(.vertical, 5)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .modifier(SubtleHover())
+                                }
+                            }
+                            .frame(width: 132, alignment: .leading)
+                            .modifier(DetailPanel())
+                            .background {
+                                OutsideClickHandler {
+                                    withAnimation(motion) { isSortMenuOpen = false }
+                                }
+                            }
+                            .offset(y: 27)
+                            .transition(.opacity.combined(with: .scale(scale: 0.97, anchor: .topTrailing)))
+                            .zIndex(20)
+                        }
+                    }
+                    .zIndex(isSortMenuOpen ? 20 : 0)
                 }
                 .padding(.bottom, 22)
 
